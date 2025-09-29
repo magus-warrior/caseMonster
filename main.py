@@ -25,7 +25,7 @@ Transform = Callable[[str], str]
 def _cap_sentences(text: str) -> str:
     sentences = text.split(".")
     transformed = ["".join(_cap_first_letter(list(sentence))) for sentence in sentences]
-    return _cap_special(".".join(transformed).strip())
+    return _cap_special(".".join(transformed))
 
 
 def _cap_special(text: str) -> str:
@@ -42,7 +42,7 @@ def _cap_special(text: str) -> str:
         else:
             fin.append(char)
 
-    return "".join(fin).strip()
+    return "".join(fin)
 
 
 def _cap_first_letter(characters: list[str]) -> list[str]:
