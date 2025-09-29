@@ -50,7 +50,7 @@ You do not need to press additional shortcuts beyond the button click. The appli
 - `Ctrl+C` to copy the selection.
 - `Ctrl+V` to paste the transformed text.
 
-The Help → "How to use" menu item attempts to open a `help.txt` file using the Windows `start` command if you want to provide extended documentation.
+The Help → "How to use" menu item opens the bundled [`help.txt`](./help.txt) guide in your default browser for a quick refresher on the buttons and automation workflow. If the file is missing, the app now shows an in-window message that explains how to restore it.
 
 ## Development Notes
 - `main.py` contains the case-conversion logic and the clipboard automation routines shared by the GUI.

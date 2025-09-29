@@ -1,13 +1,11 @@
-from pathlib import Path
-import webbrowser
-=======
 """wxPython GUI for caseMonster.
 
 Third-party dependencies:
 - wxPython (tested with 4.2.1)
 """
 
-import os
+from pathlib import Path
+import webbrowser
 
 from main import lower_case, title_case, upper_case, funky_case
 
@@ -131,13 +129,27 @@ class MONSTERcase(wx.Frame):
     def m_menuItem1OnMenuSelection(self, event):
         help_file = Path(__file__).with_name("help.txt")
         if not help_file.exists():
-            wx.LogError(f"Help file not found: {help_file}")
+            wx.MessageBox(
+                "The help guide could not be found.\n\n"
+                "Expected location:\n"
+                f"{help_file}\n\n"
+                "Restore 'help.txt' from the repository to re-enable this menu option.",
+                "Help unavailable",
+                wx.OK | wx.ICON_INFORMATION,
+                parent=self,
+            )
             return
 
         try:
             webbrowser.open(help_file.resolve().as_uri())
         except Exception as exc:
-            wx.LogError(f"Unable to open help file: {exc}")
+            wx.MessageBox(
+                "caseMonster could not open the help guide.\n\n"
+                f"Details: {exc}",
+                "Help unavailable",
+                wx.OK | wx.ICON_ERROR,
+                parent=self,
+            )
         event.Skip()
 
 
