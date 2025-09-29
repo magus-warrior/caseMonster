@@ -64,8 +64,11 @@ def _cap_first_letter(characters: list[str]) -> list[str]:
                 char.lower() == "i"
                 and fin_list
                 and fin_list[-1] == " "
-                and index + 1 < len(characters)
-                and characters[index + 1] == " "
+                and (
+                    index + 1 == len(characters)
+                    or characters[index + 1]
+                    in [" ", ".", "!", "?", "\n"]
+                )
             ):
                 fin_list.append(char.upper())
             elif (
