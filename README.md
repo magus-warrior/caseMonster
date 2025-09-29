@@ -30,19 +30,29 @@ Run the application from the repository root:
 ```bash
 python window.py
 ```
-This opens the **WarpTyme - CASEmonster** window containing buttons for each case conversion.
+This opens the **WarpTyme - CASEmonster** window containing buttons for each case conversion. The window now defaults to an "always on top" floating style so you can keep it handy above other applications. Use the gear-shaped **Settings** button to toggle this behaviour, hide the main window, or access the Windows Explorer integration helpers described below.
 
 ### Typical Workflow
 1. Highlight the text you want to convert in another application.
-2. Switch to the caseMonster window and click one of the buttons:
+2. Either click one of the buttons in the floating window *or* right-click the caseMonster tray icon to access the same conversions:
    - **Upper** – converts the text to upper case.
    - **Lower** – converts the text to lower case.
    - **Title** – converts the text to title case.
    - **Sentence** – applies the custom `funky` sentence-style capitalization.
-3. The button triggers clipboard automation:
+3. The selected action triggers clipboard automation:
    - The app automatically `Alt+Tab`s to the previous window.
    - It copies the selected text (`Ctrl+C`), transforms it, and pastes the result (`Ctrl+V`).
    - A short delay is built in to keep the automation reliable.
+
+### Tray icon quick actions
+When the application launches it now also creates a system tray icon (Windows taskbar notification area). Right-click the icon to:
+
+- Run any of the four conversions without opening the main window.
+- Show or hide the floating window.
+- Toggle the "Always on top" preference.
+- Exit the application.
+
+You can also left-click the icon to bring the window back to the foreground if you've hidden it.
 
 ### Keyboard Shortcuts & Automation
 You do not need to press additional shortcuts beyond the button click. The application issues the following shortcuts on your behalf:
@@ -51,6 +61,23 @@ You do not need to press additional shortcuts beyond the button click. The appli
 - `Ctrl+V` to paste the transformed text.
 
 The Help → "How to use" menu item attempts to open a `help.txt` file using the Windows `start` command if you want to provide extended documentation.
+
+### Command-line conversions
+The automation helpers are also exposed via a small CLI in `main.py`. Examples:
+
+```bash
+# Copy text to your clipboard, then convert it to Title Case in place
+python main.py --convert title
+
+# Convert a file to sentence case and overwrite it in-place
+python main.py --convert sentence --target path/to/file.txt --in-place
+
+# Print a transformed version of a file to stdout
+python main.py --convert upper --target path/to/file.txt
+```
+
+### Windows Explorer context menu entries
+On Windows you can register right-click Explorer entries that call the CLI shown above. Launch the GUI and open **Settings → Register Windows Explorer context menu entries** to add the commands (or remove them later). The helper writes user-level registry keys, so no administrator privileges are required, but you may need to restart Windows Explorer for the menu entries to appear.
 
 ## Development Notes
 - `main.py` contains the case-conversion logic and the clipboard automation routines shared by the GUI.
