@@ -1,0 +1,97 @@
+"""Colour palette and typography helpers for the caseMonster UI."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Dict
+
+import wx
+
+# Core brand palette
+BACKGROUND_COLOUR = wx.Colour(16, 21, 33)
+FOREGROUND_COLOUR = wx.Colour(238, 240, 245)
+ACCENT_PRIMARY = wx.Colour(79, 129, 255)
+ACCENT_SECONDARY = wx.Colour(76, 198, 170)
+ACCENT_TERTIARY = wx.Colour(244, 160, 96)
+ACCENT_NEUTRAL = wx.Colour(108, 118, 144)
+CONTAINER_BACKGROUND = wx.Colour(28, 36, 52)
+CONTAINER_BORDER = wx.Colour(58, 70, 94)
+SUBTLE_TEXT = wx.Colour(187, 196, 212)
+BORDER_SUBTLE = wx.Colour(46, 55, 76)
+
+
+@dataclass(frozen=True)
+class FontDefinition:
+    """Declarative description of a UI font role."""
+
+    point_size: int
+    weight: int
+    face_name: str
+    style: int = wx.FONTSTYLE_NORMAL
+    family: int = wx.FONTFAMILY_SWISS
+    underline: bool = False
+
+
+_FONT_DEFINITIONS: Dict[str, FontDefinition] = {
+    "base": FontDefinition(11, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
+    "headline": FontDefinition(16, wx.FONTWEIGHT_BOLD, "Segoe UI Semibold"),
+    "button": FontDefinition(11, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
+    "caption": FontDefinition(10, wx.FONTWEIGHT_LIGHT, "Segoe UI"),
+    "mono": FontDefinition(10, wx.FONTWEIGHT_NORMAL, "Cascadia Code"),
+}
+
+
+def lighten_colour(colour: wx.Colour, amount: int = 18) -> wx.Colour:
+    """Return a lighter variant of the provided colour."""
+
+    r = min(colour.Red() + amount, 255)
+    g = min(colour.Green() + amount, 255)
+    b = min(colour.Blue() + amount, 255)
+    return wx.Colour(r, g, b)
+
+
+@lru_cache(maxsize=None)
+def get_font(role: str) -> wx.Font:
+    """Fetch the wx.Font for a given semantic role, creating it lazily."""
+
+    definition = _FONT_DEFINITIONS.get(role)
+    if definition is None:  # pragma: no cover - defensive guard
+        raise KeyError(f"Unknown font role: {role}")
+
+    font = wx.Font(
+        definition.point_size,
+        definition.family,
+        definition.style,
+        definition.weight,
+        definition.underline,
+        definition.face_name,
+    )
+    if not font.IsOk():  # pragma: no cover - runtime guard
+        raise RuntimeError(f"Unable to create font for role '{role}'")
+    return font
+
+
+def apply_default_theme(window: wx.Window) -> None:
+    """Apply the base colour palette and font to a window hierarchy."""
+
+    window.SetBackgroundColour(BACKGROUND_COLOUR)
+    window.SetForegroundColour(FOREGROUND_COLOUR)
+    window.SetFont(get_font("base"))
+
+
+__all__ = [
+    "BACKGROUND_COLOUR",
+    "FOREGROUND_COLOUR",
+    "ACCENT_PRIMARY",
+    "ACCENT_SECONDARY",
+    "ACCENT_TERTIARY",
+    "ACCENT_NEUTRAL",
+    "CONTAINER_BACKGROUND",
+    "CONTAINER_BORDER",
+    "SUBTLE_TEXT",
+    "BORDER_SUBTLE",
+    "lighten_colour",
+    "get_font",
+    "apply_default_theme",
+]
