@@ -1,6 +1,5 @@
 from pathlib import Path
 import webbrowser
-=======
 """wxPython GUI for caseMonster.
 
 Third-party dependencies:
