@@ -1,0 +1,41 @@
+WarpTyme - CASEmonster Help
+===========================
+
+Welcome! This guide explains how to make the most of the redesigned caseMonster window and its quick-access automation features.
+
+Launching the app
+-----------------
+1. Open a terminal in the project directory.
+2. Run `python window.py` to launch the **WarpTyme - CASEmonster** window.
+3. Keep the window somewhere convenient—it is designed to stay out of the way while you work in other applications.
+
+Using the quick-access buttons
+------------------------------
+Each button in the window applies a different transformation to your currently selected text:
+
+- **Upper**: Converts the selection to upper case.
+- **Title**: Title-cases every word in the selection.
+- **Lower**: Converts the selection to lower case.
+- **Sentence**: Applies sentence-style capitalization, including special handling for the pronoun "I" and punctuation that signals a new sentence.
+
+All buttons share the same streamlined workflow:
+
+1. Highlight the text to convert in any application.
+2. Click the desired button in caseMonster.
+3. The app automatically switches back to your previous window, copies the selection, applies the transformation, and pastes the result—no extra shortcuts required.
+
+Quick automation tips
+---------------------
+- Keep caseMonster focused only long enough to click a button. The built-in `Alt+Tab`, `Ctrl+C`, and `Ctrl+V` automation will return you to your work instantly.
+- If the clipboard already contains text you want to reuse, skip selecting new text and simply click a button; caseMonster will operate on whatever is currently on the clipboard.
+- Need to retry? Click the same button again. The automation is designed to be idempotent for the same source text.
+
+Troubleshooting
+---------------
+- **Nothing happens after clicking a button**: Confirm that the target application allows automated clipboard access (some administrative prompts may block it). Try selecting text again and repeat the button click.
+- **Text appears in the wrong case**: Undo in the target application and try a different button. The automation replays quickly, so experimenting is safe.
+- **Help window does not open**: Make sure this `help.txt` file stays next to `window.py`. If it is missing, the app will show an in-window message explaining how to restore it from the repository.
+
+More resources
+--------------
+For installation steps, dependency information, and development tips, check the project README in the repository root. You can open it in any text editor for additional context and contribution guidelines.
