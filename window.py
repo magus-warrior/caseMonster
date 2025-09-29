@@ -1,154 +1,24 @@
-"""wxPython GUI for caseMonster.
-
-Third-party dependencies:
-- wxPython (tested with 4.2.1)
-"""
-
-from pathlib import Path
-import webbrowser
-
-from main import lower_case, title_case, upper_case, funky_case
-
-# -*- coding: utf-8 -*-
-
-###########################################################################
-## Python code generated with wxFormBuilder (version 3.10.1-34-g2d20e717)
-## http://www.wxformbuilder.org/
-##
-## PLEASE DO *NOT* EDIT THIS FILE!
-###########################################################################
-
-import wx
-import wx.xrc
-
-
-###########################################################################
-## Class MONSTERcase
-###########################################################################
-
-class MONSTERcase(wx.Frame):
-
-    def __init__(self, parent):
-        wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=u"WarpTyme - CASEmonster", pos=wx.DefaultPosition,
-                          size=wx.Size(350, 400), style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
-
-        self.SetSizeHints(wx.DefaultSize, wx.DefaultSize)
-
-        bSizer1 = wx.BoxSizer(wx.VERTICAL)
-
-        self.m_bitmap1 = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(u"logo.png", wx.BITMAP_TYPE_ANY),
-                                         wx.DefaultPosition, wx.DefaultSize, 0)
-        bSizer1.Add(self.m_bitmap1, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALL, 5)
-
-        bSizer2 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.upperButton = wx.Button(self, wx.ID_ANY, u"Upper", wx.DefaultPosition, wx.DefaultSize, 0)
-        self.upperButton.SetFont(
-            wx.Font(9, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, "Arial"))
-
-        bSizer2.Add(self.upperButton, 1, wx.ALL, 5)
-
-        bSizer1.Add(bSizer2, 1, wx.EXPAND, 5)
-
-        bSizer21 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.titleButton = wx.Button(self, wx.ID_ANY, u"Title", wx.DefaultPosition, wx.DefaultSize, 0)
-        self.titleButton.SetFont(
-            wx.Font(9, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, "Arial"))
-
-        bSizer21.Add(self.titleButton, 1, wx.ALL, 5)
-
-        bSizer1.Add(bSizer21, 1, wx.EXPAND, 5)
-
-        bSizer211 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.lowerButton = wx.Button(self, wx.ID_ANY, u"Lower", wx.DefaultPosition, wx.DefaultSize, 0)
-        self.lowerButton.SetFont(
-            wx.Font(9, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, "Arial"))
-
-        bSizer211.Add(self.lowerButton, 1, wx.ALL, 5)
-
-        bSizer1.Add(bSizer211, 1, wx.EXPAND, 5)
-
-        bSizer2111 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.funkyButton = wx.Button(self, wx.ID_ANY, u"Sentence", wx.DefaultPosition, wx.DefaultSize, 0)
-        self.funkyButton.SetFont(
-            wx.Font(9, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_HEAVY, False, "Arial Black"))
-
-        bSizer2111.Add(self.funkyButton, 1, wx.ALL, 5)
-
-        bSizer1.Add(bSizer2111, 1, wx.EXPAND, 5)
-
-        self.SetSizer(bSizer1)
-        self.Layout()
-        self.m_menubar4 = wx.MenuBar(0)
-        self.m_menu1 = wx.Menu()
-        self.m_menuItem1 = wx.MenuItem(self.m_menu1, wx.ID_ANY, u"How to use", wx.EmptyString, wx.ITEM_NORMAL)
-        self.m_menu1.Append(self.m_menuItem1)
-
-        self.m_menubar4.Append(self.m_menu1, u"Help")
-
-        self.SetMenuBar(self.m_menubar4)
-
-        self.Centre(wx.BOTH)
-
-        # Connect Events
-        self.upperButton.Bind(wx.EVT_BUTTON, self.upperButtonOnButtonClick)
-        self.titleButton.Bind(wx.EVT_BUTTON, self.titleButtonOnButtonClick)
-        self.lowerButton.Bind(wx.EVT_BUTTON, self.lowerButtonOnButtonClick)
-        self.funkyButton.Bind(wx.EVT_BUTTON, self.funkyButtonOnButtonClick)
-        self.Bind(wx.EVT_MENU, self.m_menuItem1OnMenuSelection, id=self.m_menuItem1.GetId())
-
-    def __del__(self):
-        pass
-
-    # Virtual event handlers, override them in your derived class
-
-
-    def upperButtonOnButtonClick(self, event):
-        upper_case()
-        event.Skip()
-
-
-    def lowerButtonOnButtonClick(self, event):
-        lower_case()
-        event.Skip()
-
-
-    def titleButtonOnButtonClick(self, event):
-        title_case()
-        event.Skip()
-
-
-    def funkyButtonOnButtonClick(self, event):
-        funky_case()
-        event.Skip()
-
-
-    def m_menuItem1OnMenuSelection(self, event):
-        help_file = Path(__file__).with_name("help.txt")
-        if not help_file.exists():
-            wx.MessageBox(
-                "The help guide could not be found.\n\n"
-                "Expected location:\n"
-                f"{help_file}\n\n"
-                "Restore 'help.txt' from the repository to re-enable this menu option.",
-                "Help unavailable",
-                wx.OK | wx.ICON_INFORMATION,
-                parent=self,
-            )
-=======
 """wxPython GUI for caseMonster."""
 
 from __future__ import annotations
 
+import platform
 from pathlib import Path
+from typing import Callable
 import webbrowser
 
 import wx
+import wx.adv
 
-from main import lower_case, title_case, upper_case, funky_case
+from main import funky_case, lower_case, title_case, upper_case
+
+if platform.system() == "Windows":
+    try:
+        from platform_integration import windows as win_integration
+    except Exception:  # pragma: no cover - defensive guard
+        win_integration = None
+else:  # pragma: no cover - non-Windows platforms
+    win_integration = None
 
 # Colour and typography palette
 BACKGROUND_COLOUR = wx.Colour(18, 23, 34)
@@ -207,16 +77,206 @@ class RoundedPanel(wx.Panel):
         event.Skip(False)
 
 
+class SettingsDialog(wx.Dialog):
+    """Lightweight settings dialog for common preferences."""
+
+    def __init__(self, parent: wx.Window, always_on_top: bool):
+        super().__init__(parent, title="caseMonster settings")
+
+        self.hide_requested = False
+        self._always_checkbox = wx.CheckBox(
+            self, label="Keep the floating window always on top"
+        )
+        self._always_checkbox.SetValue(always_on_top)
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        main_sizer.Add(self._always_checkbox, 0, wx.ALL | wx.EXPAND, 10)
+
+        hide_button = wx.Button(self, wx.ID_ANY, "Hide main window")
+        hide_button.Bind(wx.EVT_BUTTON, self._on_hide_clicked)
+        main_sizer.Add(hide_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
+        if win_integration is not None:
+            register_button = wx.Button(
+                self,
+                wx.ID_ANY,
+                "Register Windows Explorer context menu entries",
+            )
+            register_button.Bind(wx.EVT_BUTTON, self._on_register_context_menu)
+            main_sizer.Add(register_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
+            unregister_button = wx.Button(
+                self,
+                wx.ID_ANY,
+                "Remove Explorer context menu entries",
+            )
+            unregister_button.Bind(wx.EVT_BUTTON, self._on_unregister_context_menu)
+            main_sizer.Add(
+                unregister_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
+            )
+
+        button_sizer = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        if button_sizer:
+            ok_button = button_sizer.GetAffirmativeButton()
+            if ok_button:
+                ok_button.SetLabel("Save")
+            main_sizer.Add(button_sizer, 0, wx.ALL | wx.ALIGN_RIGHT, 10)
+
+        self.SetSizerAndFit(main_sizer)
+        self.SetMinSize(wx.Size(380, self.GetSize().height))
+
+    def _on_hide_clicked(self, event: wx.CommandEvent):
+        self.hide_requested = True
+        self.EndModal(wx.ID_OK)
+        event.Skip()
+
+    def _on_register_context_menu(self, event: wx.CommandEvent):
+        assert win_integration is not None
+        try:
+            win_integration.register_context_menu()
+            wx.MessageBox(
+                "Context menu entries registered. You may need to restart Explorer.",
+                "caseMonster",
+                style=wx.OK | wx.ICON_INFORMATION,
+            )
+        except Exception as exc:  # pragma: no cover - runtime diagnostics
+            wx.MessageBox(
+                f"Unable to register context menu entries:\n{exc}",
+                "caseMonster",
+                style=wx.OK | wx.ICON_ERROR,
+            )
+        event.Skip()
+
+    def _on_unregister_context_menu(self, event: wx.CommandEvent):
+        assert win_integration is not None
+        try:
+            win_integration.unregister_context_menu()
+            wx.MessageBox(
+                "Context menu entries removed.",
+                "caseMonster",
+                style=wx.OK | wx.ICON_INFORMATION,
+            )
+        except Exception as exc:  # pragma: no cover - runtime diagnostics
+            wx.MessageBox(
+                f"Unable to remove context menu entries:\n{exc}",
+                "caseMonster",
+                style=wx.OK | wx.ICON_ERROR,
+            )
+        event.Skip()
+
+    @property
+    def always_on_top(self) -> bool:
+        return self._always_checkbox.GetValue()
+
+
+class CaseMonsterTaskBarIcon(wx.adv.TaskBarIcon):
+    """Taskbar/tray icon exposing quick actions."""
+
+    def __init__(self, frame: "MONSTERcase"):
+        super().__init__()
+        self._frame = frame
+        icon = self._load_icon()
+        if icon.IsOk():
+            self.SetIcon(icon, "caseMonster")
+        self.Bind(wx.adv.EVT_TASKBAR_LEFT_UP, self._on_left_click)
+
+    def CreatePopupMenu(self) -> wx.Menu:
+        menu = wx.Menu()
+
+        conversions = [
+            ("Upper", "upper"),
+            ("Lower", "lower"),
+            ("Title", "title"),
+            ("Sentence", "sentence"),
+        ]
+        for label, mode in conversions:
+            item = menu.Append(wx.ID_ANY, label)
+            menu.Bind(wx.EVT_MENU, self._make_conversion_handler(mode), item)
+
+        menu.AppendSeparator()
+
+        show_item = menu.Append(wx.ID_ANY, "Show window")
+        menu.Bind(wx.EVT_MENU, self._on_show, show_item)
+        hide_item = menu.Append(wx.ID_ANY, "Hide window")
+        menu.Bind(wx.EVT_MENU, self._on_hide, hide_item)
+
+        always_item = menu.AppendCheckItem(wx.ID_ANY, "Always on top")
+        always_item.Check(self._frame.always_on_top)
+        menu.Bind(wx.EVT_MENU, self._on_toggle_always_on_top, always_item)
+
+        menu.AppendSeparator()
+        exit_item = menu.Append(wx.ID_EXIT, "Exit")
+        menu.Bind(wx.EVT_MENU, self._on_exit, exit_item)
+
+        return menu
+
+    def _load_icon(self) -> wx.Icon:
+        icon_path = Path(__file__).with_name("logoico.ico")
+        icon = wx.Icon()
+        if icon_path.exists():
+            icon.LoadFile(str(icon_path), wx.BITMAP_TYPE_ICO)
+        return icon
+
+    def _make_conversion_handler(self, mode: str) -> Callable[[wx.CommandEvent], None]:
+        def handler(event: wx.CommandEvent) -> None:
+            self._frame.run_conversion(mode)
+            event.Skip()
+
+        return handler
+
+    def _on_show(self, event: wx.CommandEvent):
+        self._frame.Show()
+        self._frame.Raise()
+        event.Skip()
+
+    def _on_hide(self, event: wx.CommandEvent):
+        self._frame.Hide()
+        event.Skip()
+
+    def _on_toggle_always_on_top(self, event: wx.CommandEvent):
+        self._frame.set_always_on_top(not self._frame.always_on_top)
+        event.Skip()
+
+    def _on_exit(self, event: wx.CommandEvent):
+        self._frame.Close(True)
+        event.Skip()
+
+    def _on_left_click(self, event: wx.CommandEvent):
+        if self._frame.IsShown():
+            self._frame.Raise()
+        else:
+            self._frame.Show()
+            self._frame.Raise()
+        event.Skip()
+
+    def Destroy(self) -> None:  # pragma: no cover - GUI cleanup
+        try:
+            self.RemoveIcon()
+        finally:
+            super().Destroy()
+
+
 class MONSTERcase(wx.Frame):
     def __init__(self, parent: wx.Window | None):
+        self._config = wx.Config(appName="caseMonster", vendorName="WarpTyme")
+        if self._config.HasEntry("always_on_top"):
+            self.always_on_top = self._config.ReadBool("always_on_top")
+        else:
+            self.always_on_top = True
+
+        base_style = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX
+        style = base_style | (wx.STAY_ON_TOP if self.always_on_top else 0)
+
         super().__init__(
             parent,
             id=wx.ID_ANY,
             title="WarpTyme - CASEmonster",
             pos=wx.DefaultPosition,
             size=wx.Size(360, 420),
-            style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL,
+            style=style,
         )
+
+        self._taskbar_icon: "CaseMonsterTaskBarIcon" | None = None
 
         self.SetBackgroundColour(BACKGROUND_COLOUR)
         self.SetForegroundColour(FOREGROUND_COLOUR)
@@ -239,10 +299,24 @@ class MONSTERcase(wx.Frame):
             self.logo = wx.StaticBitmap(self.content_panel, wx.ID_ANY, logo_bitmap)
             panel_sizer.Add(self.logo, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.BOTTOM, 14)
 
-        headline = wx.StaticText(self.content_panel, label="Transform your clipboard text")
+        headline_row = wx.BoxSizer(wx.HORIZONTAL)
+        headline = wx.StaticText(
+            self.content_panel, label="Transform your clipboard text"
+        )
         headline.SetFont(HEADLINE_FONT)
         headline.SetForegroundColour(FOREGROUND_COLOUR)
-        panel_sizer.Add(headline, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.BOTTOM, 20)
+        headline_row.AddStretchSpacer()
+        headline_row.Add(headline, 0, wx.ALIGN_CENTER_VERTICAL)
+        headline_row.AddStretchSpacer()
+
+        self.settingsButton = wx.Button(self.content_panel, wx.ID_ANY, "⚙ Settings")
+        self.settingsButton.SetFont(BUTTON_FONT)
+        self.settingsButton.SetForegroundColour(FOREGROUND_COLOUR)
+        self.settingsButton.SetBackgroundColour(CONTAINER_BACKGROUND)
+        self.settingsButton.Bind(wx.EVT_BUTTON, self.on_settings_clicked)
+        headline_row.Add(self.settingsButton, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 12)
+
+        panel_sizer.Add(headline_row, 0, wx.EXPAND | wx.BOTTOM, 20)
 
         action_container = RoundedPanel(self.content_panel)
         action_container.SetForegroundColour(FOREGROUND_COLOUR)
@@ -298,6 +372,9 @@ class MONSTERcase(wx.Frame):
         self.lowerButton.Bind(wx.EVT_BUTTON, self.lowerButtonOnButtonClick)
         self.funkyButton.Bind(wx.EVT_BUTTON, self.funkyButtonOnButtonClick)
         self.Bind(wx.EVT_MENU, self.m_menuItem1OnMenuSelection, id=self.m_menuItem1.GetId())
+        self.Bind(wx.EVT_CLOSE, self._on_close)
+
+        self._taskbar_icon = CaseMonsterTaskBarIcon(self)
 
     def _apply_shadow_effect(self):
         """Add a subtle drop shadow for floating utility feel where supported."""
@@ -344,7 +421,8 @@ class MONSTERcase(wx.Frame):
         return wx.Colour(r, g, b)
 
     def __del__(self):
-        pass
+        if hasattr(self, "_taskbar_icon") and self._taskbar_icon:
+            self._taskbar_icon.Destroy()
 
     # Virtual event handlers, override them in your derived class
     def upperButtonOnButtonClick(self, event: wx.CommandEvent):
@@ -371,14 +449,50 @@ class MONSTERcase(wx.Frame):
 
         try:
             webbrowser.open(help_file.resolve().as_uri())
-        except Exception as exc:
-            wx.MessageBox(
-                "caseMonster could not open the help guide.\n\n"
-                f"Details: {exc}",
-                "Help unavailable",
-                wx.OK | wx.ICON_ERROR,
-                parent=self,
-            )
+        except Exception as exc:  # pragma: no cover - logged for diagnostics
+            wx.LogError(f"Unable to open help file: {exc}")
+        event.Skip()
+
+    def run_conversion(self, mode: str) -> None:
+        actions: dict[str, Callable[[], None]] = {
+            "upper": upper_case,
+            "lower": lower_case,
+            "title": title_case,
+            "sentence": funky_case,
+        }
+        action = actions.get(mode)
+        if action is not None:
+            action()
+
+    def set_always_on_top(self, enabled: bool) -> None:
+        self.always_on_top = enabled
+        style = self.GetWindowStyleFlag()
+        if enabled:
+            style |= wx.STAY_ON_TOP
+        else:
+            style &= ~wx.STAY_ON_TOP
+        self.SetWindowStyleFlag(style)
+        if enabled:
+            self.Raise()
+        self._config.WriteBool("always_on_top", self.always_on_top)
+        self._config.Flush()
+
+    def on_settings_clicked(self, event: wx.CommandEvent):
+        dialog = SettingsDialog(self, self.always_on_top)
+        result = dialog.ShowModal()
+        if result == wx.ID_OK:
+            self.set_always_on_top(dialog.always_on_top)
+            if dialog.hide_requested:
+                self.Hide()
+        dialog.Destroy()
+        event.Skip()
+
+    def _on_close(self, event: wx.CloseEvent):
+        self._config.WriteBool("always_on_top", self.always_on_top)
+        self._config.Flush()
+        if self._taskbar_icon:
+            self._taskbar_icon.Destroy()
+            self._taskbar_icon = None
         event.Skip()
 
 
