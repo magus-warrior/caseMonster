@@ -30,10 +30,79 @@ CONTAINER_BACKGROUND = wx.Colour(30, 38, 54)
 CONTAINER_BORDER = wx.Colour(60, 72, 96)
 SUBTLE_TEXT = wx.Colour(180, 190, 206)
 
-BASE_FONT = wx.Font(11, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, "Segoe UI")
-HEADLINE_FONT = wx.Font(15, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, "Segoe UI Semibold")
-BUTTON_FONT = wx.Font(11, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, "Segoe UI")
-CAPTION_FONT = wx.Font(10, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_LIGHT, False, "Segoe UI")
+BASE_FONT: wx.Font | None = None
+HEADLINE_FONT: wx.Font | None = None
+BUTTON_FONT: wx.Font | None = None
+CAPTION_FONT: wx.Font | None = None
+
+
+def _ensure_fonts() -> None:
+    """Initialise font objects lazily once a wx.App exists."""
+
+    global BASE_FONT, HEADLINE_FONT, BUTTON_FONT, CAPTION_FONT
+    if BASE_FONT is not None:
+        return
+
+    BASE_FONT = wx.Font(
+        11,
+        wx.FONTFAMILY_SWISS,
+        wx.FONTSTYLE_NORMAL,
+        wx.FONTWEIGHT_NORMAL,
+        False,
+        "Segoe UI",
+    )
+    HEADLINE_FONT = wx.Font(
+        15,
+        wx.FONTFAMILY_SWISS,
+        wx.FONTSTYLE_NORMAL,
+        wx.FONTWEIGHT_BOLD,
+        False,
+        "Segoe UI Semibold",
+    )
+    BUTTON_FONT = wx.Font(
+        11,
+        wx.FONTFAMILY_SWISS,
+        wx.FONTSTYLE_NORMAL,
+        wx.FONTWEIGHT_NORMAL,
+        False,
+        "Segoe UI",
+    )
+    CAPTION_FONT = wx.Font(
+        10,
+        wx.FONTFAMILY_SWISS,
+        wx.FONTSTYLE_NORMAL,
+        wx.FONTWEIGHT_LIGHT,
+        False,
+        "Segoe UI",
+    )
+
+
+def get_base_font() -> wx.Font:
+    _ensure_fonts()
+    if BASE_FONT is None:  # pragma: no cover - defensive runtime guard
+        raise RuntimeError("Fonts have not been initialised")
+    return BASE_FONT
+
+
+def get_headline_font() -> wx.Font:
+    _ensure_fonts()
+    if HEADLINE_FONT is None:  # pragma: no cover - defensive runtime guard
+        raise RuntimeError("Fonts have not been initialised")
+    return HEADLINE_FONT
+
+
+def get_button_font() -> wx.Font:
+    _ensure_fonts()
+    if BUTTON_FONT is None:  # pragma: no cover - defensive runtime guard
+        raise RuntimeError("Fonts have not been initialised")
+    return BUTTON_FONT
+
+
+def get_caption_font() -> wx.Font:
+    _ensure_fonts()
+    if CAPTION_FONT is None:  # pragma: no cover - defensive runtime guard
+        raise RuntimeError("Fonts have not been initialised")
+    return CAPTION_FONT
 
 
 class RoundedPanel(wx.Panel):
@@ -280,7 +349,7 @@ class MONSTERcase(wx.Frame):
 
         self.SetBackgroundColour(BACKGROUND_COLOUR)
         self.SetForegroundColour(FOREGROUND_COLOUR)
-        self.SetFont(BASE_FONT)
+        self.SetFont(get_base_font())
         self.SetSizeHints(minW=320, minH=360)
         self.SetMinSize(wx.Size(320, 360))
 
@@ -289,7 +358,7 @@ class MONSTERcase(wx.Frame):
         self.content_panel = wx.Panel(self)
         self.content_panel.SetBackgroundColour(BACKGROUND_COLOUR)
         self.content_panel.SetForegroundColour(FOREGROUND_COLOUR)
-        self.content_panel.SetFont(BASE_FONT)
+        self.content_panel.SetFont(get_base_font())
         frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, 16)
 
         panel_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -303,14 +372,14 @@ class MONSTERcase(wx.Frame):
         headline = wx.StaticText(
             self.content_panel, label="Transform your clipboard text"
         )
-        headline.SetFont(HEADLINE_FONT)
+        headline.SetFont(get_headline_font())
         headline.SetForegroundColour(FOREGROUND_COLOUR)
         headline_row.AddStretchSpacer()
         headline_row.Add(headline, 0, wx.ALIGN_CENTER_VERTICAL)
         headline_row.AddStretchSpacer()
 
         self.settingsButton = wx.Button(self.content_panel, wx.ID_ANY, "⚙ Settings")
-        self.settingsButton.SetFont(BUTTON_FONT)
+        self.settingsButton.SetFont(get_button_font())
         self.settingsButton.SetForegroundColour(FOREGROUND_COLOUR)
         self.settingsButton.SetBackgroundColour(CONTAINER_BACKGROUND)
         self.settingsButton.Bind(wx.EVT_BUTTON, self.on_settings_clicked)
@@ -323,7 +392,7 @@ class MONSTERcase(wx.Frame):
         container_sizer = action_container.content_sizer
 
         caption = wx.StaticText(action_container, label="Choose how you'd like to stylize the copied text.")
-        caption.SetFont(CAPTION_FONT)
+        caption.SetFont(get_caption_font())
         caption.SetForegroundColour(SUBTLE_TEXT)
         container_sizer.Add(caption, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.BOTTOM, 12)
 
@@ -397,7 +466,7 @@ class MONSTERcase(wx.Frame):
 
     def _create_button(self, parent: wx.Window, label: str, colour: wx.Colour) -> wx.Button:
         button = wx.Button(parent, wx.ID_ANY, label, style=wx.BORDER_NONE)
-        button.SetFont(BUTTON_FONT)
+        button.SetFont(get_button_font())
         button.SetForegroundColour(FOREGROUND_COLOUR)
         button.SetBackgroundColour(colour)
         button.SetMinSize(wx.Size(220, 44))
