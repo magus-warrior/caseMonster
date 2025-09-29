@@ -1,3 +1,9 @@
+"""wxPython GUI for caseMonster.
+
+Third-party dependencies:
+- wxPython (tested with 4.2.1)
+"""
+
 import os
 
 from main import lower_case, title_case, upper_case, funky_case
