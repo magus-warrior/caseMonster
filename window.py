@@ -25,10 +25,20 @@ BACKGROUND_COLOUR = wx.Colour(18, 23, 34)
 FOREGROUND_COLOUR = wx.Colour(235, 238, 245)
 ACCENT_PRIMARY = wx.Colour(92, 143, 255)
 ACCENT_SECONDARY = wx.Colour(83, 201, 176)
+ACCENT_TERTIARY = wx.Colour(245, 162, 97)
 ACCENT_NEUTRAL = wx.Colour(104, 114, 134)
 CONTAINER_BACKGROUND = wx.Colour(30, 38, 54)
 CONTAINER_BORDER = wx.Colour(60, 72, 96)
 SUBTLE_TEXT = wx.Colour(180, 190, 206)
+
+
+def lighten_colour(colour: wx.Colour, amount: int = 18) -> wx.Colour:
+    """Return a lighter variant of the provided colour."""
+
+    r = min(colour.Red() + amount, 255)
+    g = min(colour.Green() + amount, 255)
+    b = min(colour.Blue() + amount, 255)
+    return wx.Colour(r, g, b)
 
 BASE_FONT: wx.Font | None = None
 HEADLINE_FONT: wx.Font | None = None
@@ -112,8 +122,10 @@ class RoundedPanel(wx.Panel):
         super().__init__(parent, style=wx.BORDER_NONE)
         self.radius = radius
         self.padding = padding
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetBackgroundColour(CONTAINER_BACKGROUND)
         self.Bind(wx.EVT_PAINT, self._on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
 
         self._content_sizer = wx.BoxSizer(wx.VERTICAL)
         wrapper = wx.BoxSizer(wx.VERTICAL)
@@ -129,6 +141,48 @@ class RoundedPanel(wx.Panel):
 
     def AddSpacer(self, size: int):
         self._content_sizer.AddSpacer(size)
+
+
+class AccentButton(wx.Button):
+    """Rounded, colour-forward call-to-action button used in the main grid."""
+
+    def __init__(self, parent: wx.Window, label: str, colour: wx.Colour):
+        super().__init__(parent, wx.ID_ANY, label, style=wx.BORDER_NONE)
+
+        self._base_colour = colour
+        self._hover_colour = lighten_colour(colour, 26)
+        self._pressed_colour = lighten_colour(colour, 8)
+
+        self.SetMinSize(wx.Size(150, 52))
+        self.SetFont(get_button_font())
+        self.SetForegroundColour(FOREGROUND_COLOUR)
+        self.SetBackgroundColour(self._base_colour)
+
+        self.Bind(wx.EVT_ENTER_WINDOW, self._on_hover)
+        self.Bind(wx.EVT_LEAVE_WINDOW, self._on_leave)
+        self.Bind(wx.EVT_LEFT_DOWN, self._on_press)
+        self.Bind(wx.EVT_LEFT_UP, self._on_release)
+
+    def _set_colour(self, colour: wx.Colour) -> None:
+        self.SetBackgroundColour(colour)
+        self.Refresh()
+
+    def _on_hover(self, event: wx.MouseEvent) -> None:
+        self._set_colour(self._hover_colour)
+        event.Skip()
+
+    def _on_leave(self, event: wx.MouseEvent) -> None:
+        self._set_colour(self._base_colour)
+        event.Skip()
+
+    def _on_press(self, event: wx.MouseEvent) -> None:
+        self._set_colour(self._pressed_colour)
+        event.Skip()
+
+    def _on_release(self, event: wx.MouseEvent) -> None:
+        inside = self.GetClientRect().Contains(event.GetPosition())
+        self._set_colour(self._hover_colour if inside else self._base_colour)
+        event.Skip()
 
     def _on_paint(self, event: wx.PaintEvent):
         size = self.GetClientSize()
@@ -186,7 +240,8 @@ class SettingsDialog(wx.Dialog):
 
         button_sizer = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
         if button_sizer:
-            ok_button = button_sizer.GetAffirmativeButton()
+            button_sizer.Realize()
+            ok_button = button_sizer.GetOkButton()
             if ok_button:
                 ok_button.SetLabel("Save")
             main_sizer.Add(button_sizer, 0, wx.ALL | wx.ALIGN_RIGHT, 10)
@@ -341,7 +396,7 @@ class MONSTERcase(wx.Frame):
             id=wx.ID_ANY,
             title="WarpTyme - CASEmonster",
             pos=wx.DefaultPosition,
-            size=wx.Size(360, 420),
+            size=wx.Size(460, 520),
             style=style,
         )
 
@@ -350,8 +405,8 @@ class MONSTERcase(wx.Frame):
         self.SetBackgroundColour(BACKGROUND_COLOUR)
         self.SetForegroundColour(FOREGROUND_COLOUR)
         self.SetFont(get_base_font())
-        self.SetSizeHints(minW=320, minH=360)
-        self.SetMinSize(wx.Size(320, 360))
+        self.SetSizeHints(minW=420, minH=420)
+        self.SetMinSize(wx.Size(420, 420))
 
         frame_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -359,65 +414,107 @@ class MONSTERcase(wx.Frame):
         self.content_panel.SetBackgroundColour(BACKGROUND_COLOUR)
         self.content_panel.SetForegroundColour(FOREGROUND_COLOUR)
         self.content_panel.SetFont(get_base_font())
-        frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, 16)
+        frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, 24)
 
-        panel_sizer = wx.BoxSizer(wx.VERTICAL)
+        content_sizer = wx.BoxSizer(wx.VERTICAL)
+        content_sizer.AddStretchSpacer()
 
-        logo_bitmap = self._load_logo_bitmap()
-        if logo_bitmap:
-            self.logo = wx.StaticBitmap(self.content_panel, wx.ID_ANY, logo_bitmap)
-            panel_sizer.Add(self.logo, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.BOTTOM, 14)
+        header_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        headline_row = wx.BoxSizer(wx.HORIZONTAL)
+        headline_column = wx.BoxSizer(wx.VERTICAL)
+
         headline = wx.StaticText(
             self.content_panel, label="Transform your clipboard text"
         )
         headline.SetFont(get_headline_font())
         headline.SetForegroundColour(FOREGROUND_COLOUR)
-        headline_row.AddStretchSpacer()
-        headline_row.Add(headline, 0, wx.ALIGN_CENTER_VERTICAL)
-        headline_row.AddStretchSpacer()
+        headline_column.Add(headline, 0)
 
-        self.settingsButton = wx.Button(self.content_panel, wx.ID_ANY, "⚙ Settings")
+        subline = wx.StaticText(
+            self.content_panel,
+            label="Pick a style, hit a button, and we will paste it back for you.",
+        )
+        subline.SetFont(get_caption_font())
+        subline.SetForegroundColour(SUBTLE_TEXT)
+        headline_column.Add(subline, 0, wx.TOP, 4)
+
+        header_sizer.Add(headline_column, 1, wx.ALIGN_CENTER_VERTICAL)
+
+        self.settingsButton = wx.Button(
+            self.content_panel, wx.ID_ANY, "⚙ Settings", style=wx.BORDER_NONE
+        )
         self.settingsButton.SetFont(get_button_font())
         self.settingsButton.SetForegroundColour(FOREGROUND_COLOUR)
         self.settingsButton.SetBackgroundColour(CONTAINER_BACKGROUND)
+        self.settingsButton.SetMinSize(wx.Size(110, 40))
         self.settingsButton.Bind(wx.EVT_BUTTON, self.on_settings_clicked)
-        headline_row.Add(self.settingsButton, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 12)
+        header_sizer.Add(self.settingsButton, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        panel_sizer.Add(headline_row, 0, wx.EXPAND | wx.BOTTOM, 20)
+        content_sizer.Add(header_sizer, 0, wx.EXPAND)
+        content_sizer.AddSpacer(24)
 
-        action_container = RoundedPanel(self.content_panel)
+        action_container = RoundedPanel(self.content_panel, padding=24)
         action_container.SetForegroundColour(FOREGROUND_COLOUR)
         container_sizer = action_container.content_sizer
 
-        caption = wx.StaticText(action_container, label="Choose how you'd like to stylize the copied text.")
+        caption = wx.StaticText(
+            action_container,
+            label="Choose how you'd like to stylize the copied text.",
+        )
         caption.SetFont(get_caption_font())
         caption.SetForegroundColour(SUBTLE_TEXT)
-        container_sizer.Add(caption, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.BOTTOM, 12)
+        caption.Wrap(320)
+        container_sizer.Add(caption, 0, wx.BOTTOM, 18)
 
-        buttons_sizer = wx.BoxSizer(wx.VERTICAL)
+        button_grid = wx.FlexGridSizer(0, 2, 12, 12)
+        button_grid.AddGrowableCol(0, 1)
+        button_grid.AddGrowableCol(1, 1)
 
-        self.upperButton = self._create_button(action_container, "Upper", ACCENT_PRIMARY)
-        buttons_sizer.Add(self.upperButton, 0, wx.EXPAND | wx.BOTTOM, 10)
+        self.upperButton = AccentButton(action_container, "UPPERCASE", ACCENT_PRIMARY)
+        button_grid.Add(self.upperButton, 0, wx.EXPAND)
 
-        self.titleButton = self._create_button(action_container, "Title", ACCENT_SECONDARY)
-        buttons_sizer.Add(self.titleButton, 0, wx.EXPAND | wx.BOTTOM, 10)
+        self.titleButton = AccentButton(action_container, "Title Case", ACCENT_SECONDARY)
+        button_grid.Add(self.titleButton, 0, wx.EXPAND)
 
-        self.lowerButton = self._create_button(action_container, "Lower", ACCENT_NEUTRAL)
-        buttons_sizer.Add(self.lowerButton, 0, wx.EXPAND | wx.BOTTOM, 10)
+        self.lowerButton = AccentButton(action_container, "lowercase", ACCENT_NEUTRAL)
+        button_grid.Add(self.lowerButton, 0, wx.EXPAND)
 
-        self.funkyButton = self._create_button(action_container, "Sentence", ACCENT_PRIMARY)
-        funky_font = wx.Font(11, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD, False, "Segoe UI")
-        self.funkyButton.SetFont(funky_font)
-        buttons_sizer.Add(self.funkyButton, 0, wx.EXPAND)
+        self.funkyButton = AccentButton(action_container, "Sentence case", ACCENT_TERTIARY)
+        button_grid.Add(self.funkyButton, 0, wx.EXPAND)
 
-        container_sizer.Add(buttons_sizer, 0, wx.EXPAND)
+        container_sizer.Add(button_grid, 0, wx.EXPAND)
 
-        panel_sizer.Add(action_container, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
-        panel_sizer.AddStretchSpacer(1)
+        tip = wx.StaticText(
+            action_container,
+            label="Tip: we grab the current clipboard text, transform it, and copy it back for easy pasting.",
+        )
+        tip.SetFont(get_caption_font())
+        tip.SetForegroundColour(SUBTLE_TEXT)
+        tip.Wrap(320)
+        container_sizer.Add(tip, 0, wx.TOP, 18)
 
-        self.content_panel.SetSizer(panel_sizer)
+        content_sizer.Add(action_container, 0, wx.EXPAND)
+        content_sizer.AddSpacer(24)
+
+        logo_bitmap = self._load_logo_bitmap()
+        if logo_bitmap:
+            logo = wx.StaticBitmap(self.content_panel, wx.ID_ANY, logo_bitmap)
+            content_sizer.Add(logo, 0, wx.ALIGN_CENTER_HORIZONTAL)
+
+        content_sizer.AddSpacer(16)
+
+        footer = wx.StaticText(
+            self.content_panel,
+            label="Need help? Use the Help menu or the tray icon to reach every action.",
+        )
+        footer.SetFont(get_caption_font())
+        footer.SetForegroundColour(SUBTLE_TEXT)
+        footer.Wrap(320)
+        content_sizer.Add(footer, 0, wx.ALIGN_CENTER_HORIZONTAL)
+
+        content_sizer.AddStretchSpacer()
+
+        self.content_panel.SetSizer(content_sizer)
         self.SetSizer(frame_sizer)
 
         self._apply_shadow_effect()
@@ -463,31 +560,6 @@ class MONSTERcase(wx.Frame):
         image = wx.Image(str(logo_path))
         image.SetMaskColour(255, 255, 255)
         return image.ConvertToBitmap()
-
-    def _create_button(self, parent: wx.Window, label: str, colour: wx.Colour) -> wx.Button:
-        button = wx.Button(parent, wx.ID_ANY, label, style=wx.BORDER_NONE)
-        button.SetFont(get_button_font())
-        button.SetForegroundColour(FOREGROUND_COLOUR)
-        button.SetBackgroundColour(colour)
-        button.SetMinSize(wx.Size(220, 44))
-        button.Bind(wx.EVT_ENTER_WINDOW, lambda evt, btn=button, col=colour: self._on_button_hover(btn, col))
-        button.Bind(wx.EVT_LEAVE_WINDOW, lambda evt, btn=button, col=colour: self._on_button_leave(btn, col))
-        return button
-
-    def _on_button_hover(self, button: wx.Button, base_colour: wx.Colour):
-        button.SetBackgroundColour(self._hover_colour(base_colour))
-        button.Refresh()
-
-    def _on_button_leave(self, button: wx.Button, base_colour: wx.Colour):
-        button.SetBackgroundColour(base_colour)
-        button.Refresh()
-
-    def _hover_colour(self, colour: wx.Colour) -> wx.Colour:
-        lighten = 18
-        r = min(colour.Red() + lighten, 255)
-        g = min(colour.Green() + lighten, 255)
-        b = min(colour.Blue() + lighten, 255)
-        return wx.Colour(r, g, b)
 
     def __del__(self):
         if hasattr(self, "_taskbar_icon") and self._taskbar_icon:
