@@ -1,3 +1,8 @@
+import pyperclip
+import pyautogui as pya
+import time
+
+from platform_utils import primary_modifier_key, supports_alt_tab
 """Clipboard automation helpers for caseMonster.
 
 Third-party dependencies:
@@ -100,47 +105,55 @@ def cap_first_letter(lst):
     return fin_list
 
 
-def upper_case():
-    pya.hotkey('alt', 'tab')
-    time.sleep(.01)
+MODIFIER_KEY = primary_modifier_key()
+
+
+def _maybe_switch_window():
+    if supports_alt_tab():
+        pya.hotkey('alt', 'tab')
+        time.sleep(.01)
+
+
+def _copy_selection():
     pyperclip.copy("")
-    pya.hotkey('ctrl', 'c')
+    pya.hotkey(MODIFIER_KEY, 'c')
     time.sleep(.01)
+
+
+def _paste_selection():
+    pya.hotkey(MODIFIER_KEY, 'v')
+    time.sleep(.01)
+
+
+def upper_case():
+    _maybe_switch_window()
+    _copy_selection()
     pyperclip.copy(pyperclip.paste().upper())
-    pya.hotkey('ctrl', 'v')
+    _paste_selection()
     time.sleep(.01)
     print("Upper ran")
 
 
 def lower_case():
-    pya.hotkey('alt', 'tab')
-    time.sleep(.01)
-    pyperclip.copy("")
-    pya.hotkey('ctrl', 'c')
-    time.sleep(.01)
+    _maybe_switch_window()
+    _copy_selection()
     pyperclip.copy(pyperclip.paste().lower())
-    pya.hotkey('ctrl', 'v')
+    _paste_selection()
     time.sleep(.01)
 
 
 def title_case():
-    pya.hotkey('alt', 'tab')
-    time.sleep(.01)
-    pyperclip.copy("")
-    pya.hotkey('ctrl', 'c')
-    time.sleep(.01)
+    _maybe_switch_window()
+    _copy_selection()
     pyperclip.copy(pyperclip.paste().title())
-    pya.hotkey('ctrl', 'v')
+    _paste_selection()
     time.sleep(.01)
 
 
 def funky_case():
-    pya.hotkey('alt', 'tab')
-    time.sleep(.01)
-    pyperclip.copy("")
-    pya.hotkey('ctrl', 'c')
-    time.sleep(.01)
+    _maybe_switch_window()
+    _copy_selection()
     text = funky(pyperclip.paste().upper())
     pyperclip.copy(text)
-    pya.hotkey('ctrl', 'v')
+    _paste_selection()
     time.sleep(.01)

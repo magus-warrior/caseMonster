@@ -1,3 +1,6 @@
+from pathlib import Path
+import webbrowser
+=======
 """wxPython GUI for caseMonster.
 
 Third-party dependencies:
@@ -126,7 +129,15 @@ class MONSTERcase(wx.Frame):
 
 
     def m_menuItem1OnMenuSelection(self, event):
-        os.system("start help.txt")
+        help_file = Path(__file__).with_name("help.txt")
+        if not help_file.exists():
+            wx.LogError(f"Help file not found: {help_file}")
+            return
+
+        try:
+            webbrowser.open(help_file.resolve().as_uri())
+        except Exception as exc:
+            wx.LogError(f"Unable to open help file: {exc}")
         event.Skip()
 
 
