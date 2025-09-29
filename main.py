@@ -3,6 +3,16 @@ import pyautogui as pya
 import time
 
 from platform_utils import primary_modifier_key, supports_alt_tab
+"""Clipboard automation helpers for caseMonster.
+
+Third-party dependencies:
+- pyperclip (tested with 1.8.2)
+- pyautogui (tested with 0.9.54)
+"""
+
+import pyperclip
+import pyautogui as pya
+import time
 
 
 def funky(text):
