@@ -21,7 +21,7 @@ class HeroPanel(RoundedPanel):
     """Hero-style header that introduces the application purpose."""
 
     def __init__(self, parent: wx.Window):
-        background = styles.lighten_colour(styles.CONTAINER_BACKGROUND, 12)
+        background = wx.Colour(230, 237, 252)
         super().__init__(parent, radius=22, padding=24, background=background)
         self.SetBackgroundColour(background)
 
@@ -37,8 +37,9 @@ class HeroPanel(RoundedPanel):
             self,
             "Convert your copied text into the perfect tone before you paste it anywhere.",
         )
-        subtitle.Wrap(260)
         column.Add(subtitle, 0, wx.TOP, 4)
+
+        self._subtitle = subtitle
 
         self._status = create_caption(self, "Always on top: on")
         self._status.SetForegroundColour(styles.ACCENT_SECONDARY)
@@ -47,15 +48,33 @@ class HeroPanel(RoundedPanel):
         layout.Add(column, 1, wx.EXPAND)
 
         bitmap = load_bitmap('logo.png')
+        self._image_width = 0
         if bitmap:
             image = wx.StaticBitmap(self, wx.ID_ANY, bitmap)
+            self._image_width = bitmap.GetWidth()
             layout.Add(image, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 16)
 
         self.content_sizer.Add(layout, 0, wx.EXPAND)
+        self.Bind(wx.EVT_SIZE, self._on_size)
+        self.refresh_layout()
 
     def update_status(self, always_on_top: bool) -> None:
         state = "on" if always_on_top else "off"
         self._status.SetLabel(f"Always on top: {state}")
+        self.refresh_layout()
+
+    def refresh_layout(self) -> None:
+        available = max(self.content_width(), 180)
+        text_width = available
+        if self._image_width:
+            text_width = max(available - self._image_width - 16, 160)
+        self._subtitle.Wrap(text_width)
+        self._status.Wrap(text_width)
+        self.Layout()
+
+    def _on_size(self, event: wx.SizeEvent) -> None:
+        self.refresh_layout()
+        event.Skip()
 
 
 class CaseMonsterFrame(wx.Frame):
@@ -76,12 +95,12 @@ class CaseMonsterFrame(wx.Frame):
             id=wx.ID_ANY,
             title="caseMonster",
             pos=wx.DefaultPosition,
-            size=wx.Size(520, 600),
+            size=wx.Size(560, 640),
             style=style,
         )
 
         styles.apply_default_theme(self)
-        self.SetSizeHints(minW=500, minH=520)
+        self.SetSizeHints(minW=520, minH=560)
         self.SetIcon(load_icon('logoico.ico'))
 
         self._taskbar_icon: CaseMonsterTaskBarIcon | None = None
@@ -115,7 +134,6 @@ class CaseMonsterFrame(wx.Frame):
             action_panel,
             "caseMonster grabs your selected text, applies the style, and pastes it back instantly.",
         )
-        caption.Wrap(320)
         heading_col.Add(caption, 0, wx.TOP, 4)
         heading_row.Add(heading_col, 1, wx.ALIGN_CENTER_VERTICAL)
 
@@ -152,8 +170,11 @@ class CaseMonsterFrame(wx.Frame):
             action_panel,
             "Tip: Use the tray icon for a single click conversion even when the window is hidden.",
         )
-        helper_caption.Wrap(320)
         panel_body.Add(helper_caption, 0, wx.TOP, 18)
+
+        self._action_panel = action_panel
+        self._action_caption = caption
+        self._helper_caption = helper_caption
 
         content.Add(action_panel, 0, wx.EXPAND)
         content.AddSpacer(24)
@@ -184,7 +205,6 @@ class CaseMonsterFrame(wx.Frame):
             self.content_panel,
             "Need help? Choose Help → How to use or right-click the tray icon for quick actions.",
         )
-        footer.Wrap(360)
         content.Add(footer, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
         content.AddStretchSpacer()
@@ -195,6 +215,16 @@ class CaseMonsterFrame(wx.Frame):
         self._apply_shadow_effect()
 
         self.Layout()
+
+        self._footer = footer
+        initial_action_width = max(action_panel.GetSize().width, 420)
+        self._update_action_wrapping(initial_action_width)
+        initial_footer_width = max(self.content_panel.GetSize().width, 480)
+        self._update_footer_wrapping(initial_footer_width)
+        self._hero.refresh_layout()
+
+        action_panel.Bind(wx.EVT_SIZE, self._on_action_panel_size)
+        self.content_panel.Bind(wx.EVT_SIZE, self._on_content_panel_size)
 
         menubar = wx.MenuBar()
         help_menu = wx.Menu()
@@ -224,6 +254,31 @@ class CaseMonsterFrame(wx.Frame):
             self.SetTransparent(245)
         except wx.NotImplementedError:
             pass
+
+    def _update_action_wrapping(self, panel_width: int) -> None:
+        if panel_width <= 0:
+            return
+        available = max(panel_width - 2 * self._action_panel.padding, 220)
+        self._action_caption.Wrap(available)
+        self._helper_caption.Wrap(available)
+        self._action_panel.Layout()
+
+    def _on_action_panel_size(self, event: wx.SizeEvent) -> None:
+        self._update_action_wrapping(event.GetSize().width)
+        event.Skip()
+
+    def _update_footer_wrapping(self, width: int) -> None:
+        if width <= 0:
+            return
+        available = max(width - 120, 220)
+        self._footer.Wrap(available)
+        self.content_panel.Layout()
+
+    def _on_content_panel_size(self, event: wx.SizeEvent) -> None:
+        size = event.GetSize()
+        self._update_footer_wrapping(size.width)
+        self._hero.refresh_layout()
+        event.Skip()
 
     def _run_action(self, mode: str, event: wx.CommandEvent):
         actions.run(mode)

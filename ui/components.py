@@ -38,6 +38,14 @@ class RoundedPanel(wx.Panel):
     def content_sizer(self) -> wx.BoxSizer:
         return self._content_sizer
 
+    @property
+    def padding(self) -> int:
+        return self._padding
+
+    def content_width(self) -> int:
+        size = self.GetClientSize()
+        return max(size.width - 2 * self._padding, 0)
+
     def Add(self, window: wx.Window, proportion: int = 0, flag: int = 0, border: int = 0):
         self._content_sizer.Add(window, proportion, flag, border)
 
@@ -60,7 +68,7 @@ class RoundedPanel(wx.Panel):
                 size.height,
                 self._radius,
             )
-            gc.SetPen(wx.Pen(styles.CONTAINER_BORDER, 1))
+            gc.SetPen(wx.Pen(styles.BORDER_SUBTLE, 1))
             gc.SetBrush(wx.Brush(self._background))
             gc.DrawPath(path)
         event.Skip(False)
@@ -70,7 +78,7 @@ class AccentButton(wx.Button):
     """Rounded, colour-forward call-to-action button used in the main grid."""
 
     def __init__(self, parent: wx.Window, label: str, colour: wx.Colour):
-        style = wx.BORDER_NONE | wx.BU_EXACTFIT
+        style = wx.BORDER_NONE
         super().__init__(parent, wx.ID_ANY, label, style=style)
 
         self._base_colour = colour
@@ -78,9 +86,9 @@ class AccentButton(wx.Button):
         self._pressed_colour = styles.lighten_colour(colour, 8)
         self._radius = 12
 
-        self.SetMinSize(wx.Size(160, 54))
+        self.SetMinSize(wx.Size(176, 56))
         self.SetFont(styles.get_font("button"))
-        self.SetForegroundColour(styles.FOREGROUND_COLOUR)
+        self.SetForegroundColour(styles.BUTTON_TEXT_COLOUR)
         self.SetBackgroundColour(self._base_colour)
 
         self.Bind(wx.EVT_ENTER_WINDOW, self._on_hover)
@@ -125,7 +133,7 @@ class AccentButton(wx.Button):
             gc.DrawPath(path)
 
             label = self.GetLabel()
-            gc.SetFont(styles.get_font("button"), styles.FOREGROUND_COLOUR)
+            gc.SetFont(styles.get_font("button"), self.GetForegroundColour())
             tw, th = gc.GetTextExtent(label)
             gc.DrawText(label, (size.width - tw) / 2, (size.height - th) / 2)
         else:  # pragma: no cover - fallback
@@ -142,6 +150,7 @@ class FeatureList(wx.Panel):
         self.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
+        self._labels: list[wx.StaticText] = []
         for item in items:
             row = wx.BoxSizer(wx.HORIZONTAL)
             bullet = wx.StaticText(self, label="•")
@@ -150,14 +159,26 @@ class FeatureList(wx.Panel):
             row.Add(bullet, 0, wx.RIGHT, 8)
 
             text = wx.StaticText(self, label=item)
-            text.Wrap(280)
             text.SetFont(styles.get_font("caption"))
             text.SetForegroundColour(styles.SUBTLE_TEXT)
             row.Add(text, 1)
+            self._labels.append(text)
 
             sizer.Add(row, 0, wx.BOTTOM | wx.EXPAND, 6)
 
         self.SetSizer(sizer)
+        self._update_wrap(320)
+        self.Bind(wx.EVT_SIZE, self._on_size)
+
+    def _update_wrap(self, width: int) -> None:
+        available = max(width - 40, 160)
+        for label in self._labels:
+            label.Wrap(available)
+        self.Layout()
+
+    def _on_size(self, event: wx.SizeEvent) -> None:
+        self._update_wrap(event.GetSize().width)
+        event.Skip()
 
 
 def create_caption(parent: wx.Window, label: str) -> wx.StaticText:

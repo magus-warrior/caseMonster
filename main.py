@@ -25,7 +25,19 @@ Transform = Callable[[str], str]
 def _cap_sentences(text: str) -> str:
     sentences = text.split(".")
     transformed = ["".join(_cap_first_letter(list(sentence))) for sentence in sentences]
-    return _cap_special(".".join(transformed))
+    result = _cap_special(".".join(transformed))
+
+    trailing_newlines = len(text) - len(text.rstrip("\r\n"))
+    leading_newlines = len(text) - len(text.lstrip("\r\n"))
+
+    if trailing_newlines:
+        if leading_newlines == 0:
+            result = result.rstrip("\r\n")
+        else:
+            stripped = result.rstrip("\r\n")
+            result = stripped + text[-trailing_newlines:]
+
+    return result
 
 
 def _cap_special(text: str) -> str:
