@@ -158,7 +158,17 @@ class CaseMonsterFrame(wx.Frame):
         self.funky_button = AccentButton(action_panel, "Sentence case", styles.ACCENT_TERTIARY)
         button_grid.Add(self.funky_button, 0, wx.EXPAND)
 
-        panel_body.Add(button_grid, 0, wx.EXPAND)
+        self._buttons = [
+            self.upper_button,
+            self.title_button,
+            self.lower_button,
+            self.funky_button,
+        ]
+
+        button_item = panel_body.Add(button_grid, 0, wx.EXPAND)
+        self._button_grid = button_grid
+        self._button_columns = 2
+        self._button_sizer_item = button_item
 
         helper_caption = create_caption(
             action_panel,
@@ -263,6 +273,7 @@ class CaseMonsterFrame(wx.Frame):
     def _update_action_wrapping(self, panel_width: int) -> None:
         if panel_width <= 0:
             return
+        self._update_button_layout(panel_width)
         available = max(panel_width - 2 * self._action_panel.padding, 220)
         self._action_caption.Wrap(available)
         self._helper_caption.Wrap(available)
@@ -271,6 +282,27 @@ class CaseMonsterFrame(wx.Frame):
     def _on_action_panel_size(self, event: wx.SizeEvent) -> None:
         self._update_action_wrapping(event.GetSize().width)
         event.Skip()
+
+    def _update_button_layout(self, panel_width: int) -> None:
+        available = panel_width - 2 * self._action_panel.padding
+        desired_columns = 2 if available >= 420 else 1
+        if desired_columns == self._button_columns or desired_columns <= 0:
+            return
+
+        new_grid = wx.FlexGridSizer(0, desired_columns, 12, 12)
+        new_grid.SetFlexibleDirection(wx.HORIZONTAL)
+        new_grid.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_ALL)
+
+        for button in self._buttons:
+            new_grid.Add(button, 0, wx.EXPAND)
+
+        for column in range(desired_columns):
+            new_grid.AddGrowableCol(column, 1)
+
+        self._button_sizer_item.SetSizer(new_grid)
+        self._button_grid = new_grid
+        self._button_columns = desired_columns
+        self._action_panel.Layout()
 
     def _update_footer_wrapping(self, width: int) -> None:
         if width <= 0:
