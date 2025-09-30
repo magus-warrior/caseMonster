@@ -9,16 +9,17 @@ from typing import Dict
 import wx
 
 # Core brand palette
-BACKGROUND_COLOUR = wx.Colour(16, 21, 33)
-FOREGROUND_COLOUR = wx.Colour(238, 240, 245)
-ACCENT_PRIMARY = wx.Colour(79, 129, 255)
-ACCENT_SECONDARY = wx.Colour(76, 198, 170)
-ACCENT_TERTIARY = wx.Colour(244, 160, 96)
-ACCENT_NEUTRAL = wx.Colour(108, 118, 144)
-CONTAINER_BACKGROUND = wx.Colour(28, 36, 52)
-CONTAINER_BORDER = wx.Colour(58, 70, 94)
-SUBTLE_TEXT = wx.Colour(187, 196, 212)
-BORDER_SUBTLE = wx.Colour(46, 55, 76)
+BACKGROUND_COLOUR = wx.Colour(244, 247, 252)
+FOREGROUND_COLOUR = wx.Colour(24, 32, 45)
+ACCENT_PRIMARY = wx.Colour(64, 106, 255)
+ACCENT_SECONDARY = wx.Colour(24, 151, 111)
+ACCENT_TERTIARY = wx.Colour(230, 124, 48)
+ACCENT_NEUTRAL = wx.Colour(101, 116, 139)
+CONTAINER_BACKGROUND = wx.Colour(255, 255, 255)
+CONTAINER_BORDER = wx.Colour(219, 225, 238)
+SUBTLE_TEXT = wx.Colour(92, 106, 133)
+BORDER_SUBTLE = wx.Colour(209, 216, 230)
+BUTTON_TEXT_COLOUR = wx.Colour(255, 255, 255)
 
 
 @dataclass(frozen=True)
@@ -35,9 +36,9 @@ class FontDefinition:
 
 _FONT_DEFINITIONS: Dict[str, FontDefinition] = {
     "base": FontDefinition(11, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
-    "headline": FontDefinition(16, wx.FONTWEIGHT_BOLD, "Segoe UI Semibold"),
-    "button": FontDefinition(11, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
-    "caption": FontDefinition(10, wx.FONTWEIGHT_LIGHT, "Segoe UI"),
+    "headline": FontDefinition(17, wx.FONTWEIGHT_BOLD, "Segoe UI Semibold"),
+    "button": FontDefinition(11, wx.FONTWEIGHT_BOLD, "Segoe UI"),
+    "caption": FontDefinition(10, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
     "mono": FontDefinition(10, wx.FONTWEIGHT_NORMAL, "Cascadia Code"),
 }
 
@@ -91,6 +92,7 @@ __all__ = [
     "CONTAINER_BORDER",
     "SUBTLE_TEXT",
     "BORDER_SUBTLE",
+    "BUTTON_TEXT_COLOUR",
     "lighten_colour",
     "get_font",
     "apply_default_theme",
