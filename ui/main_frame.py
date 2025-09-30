@@ -22,7 +22,12 @@ class HeroPanel(RoundedPanel):
 
     def __init__(self, parent: wx.Window):
         background = wx.Colour(40, 48, 66)
-        super().__init__(parent, radius=22, padding=24, background=background)
+        super().__init__(
+            parent,
+            radius=22,
+            padding=24,
+            background=background,
+        )
         self.SetBackgroundColour(background)
 
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -32,7 +37,7 @@ class HeroPanel(RoundedPanel):
         brand.SetForegroundColour(styles.ACCENT_PRIMARY)
         layout.Add(brand, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
-        layout.AddSpacer(6)
+        layout.AddSpacer(self.FromDIP(6))
 
         title = wx.StaticText(self, label="Clipboard stylist")
         title.SetFont(styles.get_font("headline"))
@@ -43,13 +48,18 @@ class HeroPanel(RoundedPanel):
             self,
             "Convert your copied text into the perfect tone before you paste it anywhere.",
         )
-        layout.Add(subtitle, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 4)
+        layout.Add(subtitle, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, self.FromDIP(4))
 
         self._subtitle = subtitle
 
         self._status = create_caption(self, "Always on top: on")
         self._status.SetForegroundColour(styles.ACCENT_SECONDARY)
-        layout.Add(self._status, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 12)
+        layout.Add(
+            self._status,
+            0,
+            wx.ALIGN_CENTER_HORIZONTAL | wx.TOP,
+            self.FromDIP(12),
+        )
 
         self.content_sizer.Add(layout, 0, wx.EXPAND)
         self.Bind(wx.EVT_SIZE, self._on_size)
@@ -61,7 +71,7 @@ class HeroPanel(RoundedPanel):
         self.refresh_layout()
 
     def refresh_layout(self) -> None:
-        available = max(self.content_width(), 180)
+        available = max(self.content_width(), self.FromDIP(180))
         self._subtitle.Wrap(available)
         self._status.Wrap(available)
         self.Layout()
@@ -89,31 +99,40 @@ class CaseMonsterFrame(wx.Frame):
             id=wx.ID_ANY,
             title="caseMonster",
             pos=wx.DefaultPosition,
-            size=wx.Size(560, 640),
+            size=wx.DefaultSize,
             style=style,
         )
 
         styles.apply_default_theme(self)
-        self.SetSizeHints(minW=520, minH=560)
+
+        initial_size = self.FromDIP(wx.Size(720, 760))
+        min_size = self.FromDIP(wx.Size(640, 600))
+        self.SetInitialSize(initial_size)
+        self.SetSize(initial_size)
+        self.SetMinSize(min_size)
+        self.SetSizeHints(minW=min_size.width, minH=min_size.height)
         self.SetIcon(load_icon('logoico.ico'))
 
         self._taskbar_icon: CaseMonsterTaskBarIcon | None = None
 
         frame_sizer = wx.BoxSizer(wx.VERTICAL)
 
+        border = self.FromDIP(24)
+
         self.content_panel = wx.ScrolledWindow(self, style=wx.VSCROLL)
         styles.apply_default_theme(self.content_panel)
-        self.content_panel.SetScrollRate(0, 16)
-        frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, 26)
+        self.content_panel.SetScrollRate(0, self.FromDIP(16))
+        frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, border)
 
         content = wx.BoxSizer(wx.VERTICAL)
 
         hero = HeroPanel(self.content_panel)
         content.Add(hero, 0, wx.EXPAND)
-        content.AddSpacer(24)
+        content.AddSpacer(self.FromDIP(24))
         self._hero = hero
 
-        action_panel = RoundedPanel(self.content_panel, padding=24)
+        panel_padding = 24
+        action_panel = RoundedPanel(self.content_panel, padding=panel_padding)
         action_panel.SetForegroundColour(styles.FOREGROUND_COLOUR)
         action_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
         panel_body = action_panel.content_sizer
@@ -128,7 +147,7 @@ class CaseMonsterFrame(wx.Frame):
             action_panel,
             "caseMonster grabs your selected text, applies the style, and pastes it back instantly.",
         )
-        heading_col.Add(caption, 0, wx.TOP, 4)
+        heading_col.Add(caption, 0, wx.TOP, self.FromDIP(4))
         heading_row.Add(heading_col, 1, wx.ALIGN_CENTER_VERTICAL)
 
         self.settings_button = AccentButton(
@@ -136,13 +155,19 @@ class CaseMonsterFrame(wx.Frame):
             "⚙ Settings",
             styles.ACCENT_NEUTRAL,
         )
-        self.settings_button.SetMinSize(wx.Size(150, 48))
-        heading_row.Add(self.settings_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
+        self.settings_button.SetMinSize(self.FromDIP(wx.Size(160, 48)))
+        heading_row.Add(
+            self.settings_button,
+            0,
+            wx.ALIGN_CENTER_VERTICAL | wx.LEFT,
+            self.FromDIP(12),
+        )
 
         panel_body.Add(heading_row, 0, wx.EXPAND)
-        panel_body.AddSpacer(16)
+        panel_body.AddSpacer(self.FromDIP(16))
 
-        button_grid = wx.FlexGridSizer(0, 2, 12, 12)
+        gap = self.FromDIP(12)
+        button_grid = wx.FlexGridSizer(0, 2, gap, gap)
         button_grid.AddGrowableCol(0, 1)
         button_grid.AddGrowableCol(1, 1)
 
@@ -174,21 +199,21 @@ class CaseMonsterFrame(wx.Frame):
             action_panel,
             "Tip: Use the tray icon for a single click conversion even when the window is hidden.",
         )
-        panel_body.Add(helper_caption, 0, wx.TOP, 18)
+        panel_body.Add(helper_caption, 0, wx.TOP, self.FromDIP(18))
 
         self._action_panel = action_panel
         self._action_caption = caption
         self._helper_caption = helper_caption
 
         content.Add(action_panel, 0, wx.EXPAND)
-        content.AddSpacer(24)
+        content.AddSpacer(self.FromDIP(24))
 
         insights_panel = RoundedPanel(self.content_panel, padding=20)
         insights_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
         insights_body = insights_panel.content_sizer
 
         insights_body.Add(create_section_heading(insights_panel, "Why people love caseMonster"), 0)
-        insights_body.AddSpacer(12)
+        insights_body.AddSpacer(self.FromDIP(12))
         insights_body.Add(
             FeatureList(
                 insights_panel,
@@ -203,7 +228,7 @@ class CaseMonsterFrame(wx.Frame):
         )
 
         content.Add(insights_panel, 0, wx.EXPAND)
-        content.AddSpacer(24)
+        content.AddSpacer(self.FromDIP(24))
 
         footer = create_caption(
             self.content_panel,
@@ -222,9 +247,12 @@ class CaseMonsterFrame(wx.Frame):
         self.Layout()
 
         self._footer = footer
-        initial_action_width = max(action_panel.GetSize().width, 420)
+        self._two_column_threshold = self.FromDIP(420)
+
+        initial_action_width = max(action_panel.GetSize().width, self._two_column_threshold)
         self._update_action_wrapping(initial_action_width)
-        initial_footer_width = max(self.content_panel.GetSize().width, 480)
+        footer_wrap_base = self.FromDIP(480)
+        initial_footer_width = max(self.content_panel.GetSize().width, footer_wrap_base)
         self._update_footer_wrapping(initial_footer_width)
         self._hero.refresh_layout()
 
@@ -274,7 +302,10 @@ class CaseMonsterFrame(wx.Frame):
         if panel_width <= 0:
             return
         self._update_button_layout(panel_width)
-        available = max(panel_width - 2 * self._action_panel.padding, 220)
+        available = max(
+            panel_width - 2 * self._action_panel.padding,
+            self.FromDIP(220),
+        )
         self._action_caption.Wrap(available)
         self._helper_caption.Wrap(available)
         self._action_panel.Layout()
@@ -285,11 +316,12 @@ class CaseMonsterFrame(wx.Frame):
 
     def _update_button_layout(self, panel_width: int) -> None:
         available = panel_width - 2 * self._action_panel.padding
-        desired_columns = 2 if available >= 420 else 1
+        desired_columns = 2 if available >= self._two_column_threshold else 1
         if desired_columns == self._button_columns or desired_columns <= 0:
             return
 
-        new_grid = wx.FlexGridSizer(0, desired_columns, 12, 12)
+        gap = self.FromDIP(12)
+        new_grid = wx.FlexGridSizer(0, desired_columns, gap, gap)
         new_grid.SetFlexibleDirection(wx.HORIZONTAL)
         new_grid.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_ALL)
 
@@ -307,7 +339,7 @@ class CaseMonsterFrame(wx.Frame):
     def _update_footer_wrapping(self, width: int) -> None:
         if width <= 0:
             return
-        available = max(width - 120, 220)
+        available = max(width - self.FromDIP(120), self.FromDIP(220))
         self._footer.Wrap(available)
         self.content_panel.Layout()
 

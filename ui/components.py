@@ -21,8 +21,11 @@ class RoundedPanel(wx.Panel):
         background: wx.Colour | None = None,
     ) -> None:
         super().__init__(parent, style=wx.BORDER_NONE)
-        self._radius = radius
-        self._padding = padding
+
+        # Scale the visual metrics so that padding and curvature stay consistent
+        # on high DPI displays.
+        self._radius = self.FromDIP(radius)
+        self._padding = self.FromDIP(padding)
         self._background = background or styles.CONTAINER_BACKGROUND
 
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
@@ -84,9 +87,10 @@ class AccentButton(wx.Button):
         self._base_colour = colour
         self._hover_colour = styles.lighten_colour(colour, 24)
         self._pressed_colour = styles.lighten_colour(colour, 8)
-        self._radius = 12
+        self._radius = self.FromDIP(12)
 
-        self.SetMinSize(wx.Size(176, 56))
+        min_size = self.FromDIP(wx.Size(176, 56))
+        self.SetMinSize(min_size)
         self.SetFont(styles.get_font("button"))
         self.SetForegroundColour(styles.BUTTON_TEXT_COLOUR)
         self.SetBackgroundColour(self._base_colour)
@@ -153,12 +157,15 @@ class FeatureList(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         self._labels: list[wx.StaticText] = []
+        self._spacing = self.FromDIP(8)
+        bottom_spacing = self.FromDIP(6)
+
         for item in items:
             row = wx.BoxSizer(wx.HORIZONTAL)
             bullet = wx.StaticText(self, label="•")
             bullet.SetFont(styles.get_font("headline"))
             bullet.SetForegroundColour(styles.ACCENT_TERTIARY)
-            row.Add(bullet, 0, wx.RIGHT, 8)
+            row.Add(bullet, 0, wx.RIGHT, self._spacing)
 
             text = wx.StaticText(self, label=item)
             text.SetFont(styles.get_font("caption"))
@@ -166,14 +173,14 @@ class FeatureList(wx.Panel):
             row.Add(text, 1)
             self._labels.append(text)
 
-            sizer.Add(row, 0, wx.BOTTOM | wx.EXPAND, 6)
+            sizer.Add(row, 0, wx.BOTTOM | wx.EXPAND, bottom_spacing)
 
         self.SetSizer(sizer)
-        self._update_wrap(320)
+        self._update_wrap(self.FromDIP(320))
         self.Bind(wx.EVT_SIZE, self._on_size)
 
     def _update_wrap(self, width: int) -> None:
-        available = max(width - 40, 160)
+        available = max(width - self.FromDIP(40), self.FromDIP(160))
         for label in self._labels:
             label.Wrap(available)
         self.Layout()
