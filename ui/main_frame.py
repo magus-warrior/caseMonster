@@ -30,26 +30,26 @@ class HeroPanel(RoundedPanel):
         brand = wx.StaticText(self, label="caseMonster")
         brand.SetFont(styles.get_font("display"))
         brand.SetForegroundColour(styles.ACCENT_PRIMARY)
-        layout.Add(brand, 0)
+        layout.Add(brand, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
         layout.AddSpacer(6)
 
         title = wx.StaticText(self, label="Clipboard stylist")
         title.SetFont(styles.get_font("headline"))
         title.SetForegroundColour(styles.FOREGROUND_COLOUR)
-        layout.Add(title, 0)
+        layout.Add(title, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
         subtitle = create_caption(
             self,
             "Convert your copied text into the perfect tone before you paste it anywhere.",
         )
-        layout.Add(subtitle, 0, wx.TOP, 4)
+        layout.Add(subtitle, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 4)
 
         self._subtitle = subtitle
 
         self._status = create_caption(self, "Always on top: on")
         self._status.SetForegroundColour(styles.ACCENT_SECONDARY)
-        layout.Add(self._status, 0, wx.TOP, 12)
+        layout.Add(self._status, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 12)
 
         self.content_sizer.Add(layout, 0, wx.EXPAND)
         self.Bind(wx.EVT_SIZE, self._on_size)
@@ -101,12 +101,12 @@ class CaseMonsterFrame(wx.Frame):
 
         frame_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.content_panel = wx.Panel(self)
+        self.content_panel = wx.ScrolledWindow(self, style=wx.VSCROLL)
         styles.apply_default_theme(self.content_panel)
+        self.content_panel.SetScrollRate(0, 16)
         frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, 26)
 
         content = wx.BoxSizer(wx.VERTICAL)
-        content.AddStretchSpacer()
 
         hero = HeroPanel(self.content_panel)
         content.Add(hero, 0, wx.EXPAND)
@@ -204,6 +204,7 @@ class CaseMonsterFrame(wx.Frame):
         content.AddStretchSpacer()
 
         self.content_panel.SetSizer(content)
+        self.content_panel.FitInside()
         self.SetSizer(frame_sizer)
 
         self._apply_shadow_effect()
@@ -272,6 +273,7 @@ class CaseMonsterFrame(wx.Frame):
         size = event.GetSize()
         self._update_footer_wrapping(size.width)
         self._hero.refresh_layout()
+        self.content_panel.FitInside()
         event.Skip()
 
     def _run_action(self, mode: str, event: wx.CommandEvent):
