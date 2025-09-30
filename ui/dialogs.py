@@ -89,13 +89,14 @@ class SettingsDialog(wx.Dialog):
         footer.Wrap(360)
         body.Add(footer, 0, wx.TOP, 6)
 
-        action_row = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
-        if action_row:
-            action_row.Realize()
-            ok_button = action_row.GetOkButton()
-            if ok_button:
-                ok_button.SetLabel("Save")
-            body.Add(action_row, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
+        action_row = wx.StdDialogButtonSizer()
+        ok_button = wx.Button(container, wx.ID_OK, "Save")
+        ok_button.SetDefault()
+        cancel_button = wx.Button(container, wx.ID_CANCEL)
+        action_row.AddButton(ok_button)
+        action_row.AddButton(cancel_button)
+        action_row.Realize()
+        body.Add(action_row, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
 
         outer_sizer = wx.BoxSizer(wx.VERTICAL)
         outer_sizer.Add(container, 1, wx.EXPAND | wx.ALL, 14)
