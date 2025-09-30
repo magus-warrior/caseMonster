@@ -5,7 +5,7 @@ from __future__ import annotations
 import wx
 
 from . import actions, styles
-from .assets import load_bitmap, load_icon
+from .assets import load_icon
 from .components import (
     AccentButton,
     FeatureList,
@@ -21,38 +21,35 @@ class HeroPanel(RoundedPanel):
     """Hero-style header that introduces the application purpose."""
 
     def __init__(self, parent: wx.Window):
-        background = wx.Colour(230, 237, 252)
+        background = wx.Colour(40, 48, 66)
         super().__init__(parent, radius=22, padding=24, background=background)
         self.SetBackgroundColour(background)
 
-        layout = wx.BoxSizer(wx.HORIZONTAL)
-        column = wx.BoxSizer(wx.VERTICAL)
+        layout = wx.BoxSizer(wx.VERTICAL)
+
+        brand = wx.StaticText(self, label="caseMonster")
+        brand.SetFont(styles.get_font("display"))
+        brand.SetForegroundColour(styles.ACCENT_PRIMARY)
+        layout.Add(brand, 0)
+
+        layout.AddSpacer(6)
 
         title = wx.StaticText(self, label="Clipboard stylist")
         title.SetFont(styles.get_font("headline"))
         title.SetForegroundColour(styles.FOREGROUND_COLOUR)
-        column.Add(title, 0)
+        layout.Add(title, 0)
 
         subtitle = create_caption(
             self,
             "Convert your copied text into the perfect tone before you paste it anywhere.",
         )
-        column.Add(subtitle, 0, wx.TOP, 4)
+        layout.Add(subtitle, 0, wx.TOP, 4)
 
         self._subtitle = subtitle
 
         self._status = create_caption(self, "Always on top: on")
         self._status.SetForegroundColour(styles.ACCENT_SECONDARY)
-        column.Add(self._status, 0, wx.TOP, 12)
-
-        layout.Add(column, 1, wx.EXPAND)
-
-        bitmap = load_bitmap('logo.png')
-        self._image_width = 0
-        if bitmap:
-            image = wx.StaticBitmap(self, wx.ID_ANY, bitmap)
-            self._image_width = bitmap.GetWidth()
-            layout.Add(image, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 16)
+        layout.Add(self._status, 0, wx.TOP, 12)
 
         self.content_sizer.Add(layout, 0, wx.EXPAND)
         self.Bind(wx.EVT_SIZE, self._on_size)
@@ -65,11 +62,8 @@ class HeroPanel(RoundedPanel):
 
     def refresh_layout(self) -> None:
         available = max(self.content_width(), 180)
-        text_width = available
-        if self._image_width:
-            text_width = max(available - self._image_width - 16, 160)
-        self._subtitle.Wrap(text_width)
-        self._status.Wrap(text_width)
+        self._subtitle.Wrap(available)
+        self._status.Wrap(available)
         self.Layout()
 
     def _on_size(self, event: wx.SizeEvent) -> None:

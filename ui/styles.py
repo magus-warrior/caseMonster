@@ -8,18 +8,18 @@ from typing import Dict
 
 import wx
 
-# Core brand palette
-BACKGROUND_COLOUR = wx.Colour(244, 247, 252)
-FOREGROUND_COLOUR = wx.Colour(24, 32, 45)
-ACCENT_PRIMARY = wx.Colour(64, 106, 255)
-ACCENT_SECONDARY = wx.Colour(24, 151, 111)
-ACCENT_TERTIARY = wx.Colour(230, 124, 48)
-ACCENT_NEUTRAL = wx.Colour(101, 116, 139)
-CONTAINER_BACKGROUND = wx.Colour(255, 255, 255)
-CONTAINER_BORDER = wx.Colour(219, 225, 238)
-SUBTLE_TEXT = wx.Colour(92, 106, 133)
-BORDER_SUBTLE = wx.Colour(209, 216, 230)
-BUTTON_TEXT_COLOUR = wx.Colour(255, 255, 255)
+# Core brand palette – tuned for the restored dark theme
+BACKGROUND_COLOUR = wx.Colour(18, 22, 32)
+FOREGROUND_COLOUR = wx.Colour(228, 236, 255)
+ACCENT_PRIMARY = wx.Colour(84, 160, 255)
+ACCENT_SECONDARY = wx.Colour(72, 205, 160)
+ACCENT_TERTIARY = wx.Colour(255, 166, 105)
+ACCENT_NEUTRAL = wx.Colour(132, 146, 172)
+CONTAINER_BACKGROUND = wx.Colour(30, 38, 52)
+CONTAINER_BORDER = wx.Colour(52, 61, 80)
+SUBTLE_TEXT = wx.Colour(168, 181, 206)
+BORDER_SUBTLE = wx.Colour(46, 54, 72)
+BUTTON_TEXT_COLOUR = wx.Colour(12, 16, 24)
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,7 @@ _FONT_DEFINITIONS: Dict[str, FontDefinition] = {
     "base": FontDefinition(11, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
     "headline": FontDefinition(17, wx.FONTWEIGHT_BOLD, "Segoe UI Semibold"),
     "button": FontDefinition(11, wx.FONTWEIGHT_BOLD, "Segoe UI"),
+    "display": FontDefinition(24, wx.FONTWEIGHT_BOLD, "Segoe UI Semibold"),
     "caption": FontDefinition(10, wx.FONTWEIGHT_NORMAL, "Segoe UI"),
     "mono": FontDefinition(10, wx.FONTWEIGHT_NORMAL, "Cascadia Code"),
 }

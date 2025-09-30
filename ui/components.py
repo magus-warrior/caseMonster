@@ -90,12 +90,14 @@ class AccentButton(wx.Button):
         self.SetFont(styles.get_font("button"))
         self.SetForegroundColour(styles.BUTTON_TEXT_COLOUR)
         self.SetBackgroundColour(self._base_colour)
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
         self.Bind(wx.EVT_ENTER_WINDOW, self._on_hover)
         self.Bind(wx.EVT_LEAVE_WINDOW, self._on_leave)
         self.Bind(wx.EVT_LEFT_DOWN, self._on_press)
         self.Bind(wx.EVT_LEFT_UP, self._on_release)
         self.Bind(wx.EVT_PAINT, self._on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
 
     def _set_colour(self, colour: wx.Colour) -> None:
         self.SetBackgroundColour(colour)
