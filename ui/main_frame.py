@@ -243,8 +243,18 @@ class CaseMonsterFrame(wx.Frame):
         self._hero.update_status(self.always_on_top)
 
     def _apply_shadow_effect(self):
+        """Hint at a drop shadow without washing out the UI."""
+
         if "WX_MAC" in wx.PlatformInfo:
             return
+
+        # Windows already provides a drop shadow and applying SetTransparent
+        # makes the whole window semi-opaque, which results in the washed out
+        # look reported by users. Keep the behaviour for GTK where it helps to
+        # soften the window edges, but otherwise skip it.
+        if "WXMSW" in wx.PlatformInfo:
+            return
+
         try:
             self.SetTransparent(245)
         except wx.NotImplementedError:
