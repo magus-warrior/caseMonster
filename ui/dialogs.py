@@ -118,8 +118,7 @@ class SettingsDialog(wx.Dialog):
             )
         except Exception as exc:  # pragma: no cover - runtime diagnostics
             wx.MessageBox(
-                f"Unable to register context menu entries:
-{exc}",
+                f"Unable to register context menu entries:\n{exc}",
                 "caseMonster",
                 style=wx.OK | wx.ICON_ERROR,
             )
@@ -136,8 +135,7 @@ class SettingsDialog(wx.Dialog):
             )
         except Exception as exc:  # pragma: no cover - runtime diagnostics
             wx.MessageBox(
-                f"Unable to remove context menu entries:
-{exc}",
+                f"Unable to remove context menu entries:\n{exc}",
                 "caseMonster",
                 style=wx.OK | wx.ICON_ERROR,
             )
