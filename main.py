@@ -133,28 +133,38 @@ def _paste_selection():
     time.sleep(0.01)
 
 
-def transform_clipboard(transform: Transform) -> None:
+def transform_clipboard(
+    transform: Transform,
+    source_text: str | None = None,
+    *,
+    paste: bool = True,
+) -> tuple[str, str]:
     _maybe_switch_window()
-    _copy_selection()
-    pyperclip.copy(transform(pyperclip.paste()))
-    _paste_selection()
+    if source_text is None:
+        _copy_selection()
+        source_text = pyperclip.paste()
+    transformed = transform(source_text)
+    pyperclip.copy(transformed)
+    if paste:
+        _paste_selection()
     time.sleep(0.01)
+    return source_text, transformed
 
 
-def upper_case():
-    transform_clipboard(TRANSFORMS["upper"])
+def upper_case(source_text: str | None = None, *, paste: bool = True) -> tuple[str, str]:
+    return transform_clipboard(TRANSFORMS["upper"], source_text, paste=paste)
 
 
-def lower_case():
-    transform_clipboard(TRANSFORMS["lower"])
+def lower_case(source_text: str | None = None, *, paste: bool = True) -> tuple[str, str]:
+    return transform_clipboard(TRANSFORMS["lower"], source_text, paste=paste)
 
 
-def title_case():
-    transform_clipboard(TRANSFORMS["title"])
+def title_case(source_text: str | None = None, *, paste: bool = True) -> tuple[str, str]:
+    return transform_clipboard(TRANSFORMS["title"], source_text, paste=paste)
 
 
-def funky_case():
-    transform_clipboard(TRANSFORMS["sentence"])
+def funky_case(source_text: str | None = None, *, paste: bool = True) -> tuple[str, str]:
+    return transform_clipboard(TRANSFORMS["sentence"], source_text, paste=paste)
 
 
 def convert_text(text: str, mode: str) -> str:
