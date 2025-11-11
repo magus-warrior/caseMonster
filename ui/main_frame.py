@@ -1,89 +1,22 @@
-"""Main application window for caseMonster."""
+"""Thin floating toolbar hosting the caseMonster controls."""
 
 from __future__ import annotations
 
+from typing import Callable, Optional
+
+import pyperclip
 import wx
 
 from . import actions, styles
 from .assets import load_icon
-from .components import (
-    AccentButton,
-    FeatureList,
-    RoundedPanel,
-    create_caption,
-    create_section_heading,
-)
-from .dialogs import SettingsDialog, open_help_guide
+from .history import ClipboardHistory
 from .taskbar import CaseMonsterTaskBarIcon
 
 
-class HeroPanel(RoundedPanel):
-    """Hero-style header that introduces the application purpose."""
-
-    def __init__(self, parent: wx.Window):
-        background = styles.SURFACE_TINT
-        super().__init__(
-            parent,
-            radius=22,
-            padding=24,
-            background=background,
-            elevation=2,
-        )
-        self.SetBackgroundColour(background)
-
-        layout = wx.BoxSizer(wx.VERTICAL)
-
-        brand = wx.StaticText(self, label="caseMonster")
-        brand.SetFont(styles.get_font("display"))
-        brand.SetForegroundColour(styles.ACCENT_PRIMARY)
-        layout.Add(brand, 0, wx.ALIGN_CENTER_HORIZONTAL)
-
-        layout.AddSpacer(self.FromDIP(6))
-
-        title = wx.StaticText(self, label="Clipboard stylist")
-        title.SetFont(styles.get_font("headline"))
-        title.SetForegroundColour(styles.FOREGROUND_COLOUR)
-        layout.Add(title, 0, wx.ALIGN_CENTER_HORIZONTAL)
-
-        subtitle = create_caption(
-            self,
-            "Polish your clipboard with natural, ready-to-send prose before you paste it anywhere.",
-        )
-        layout.Add(subtitle, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, self.FromDIP(4))
-
-        self._subtitle = subtitle
-
-        self._status = create_caption(self, "Always on top: on")
-        self._status.SetForegroundColour(styles.ACCENT_SECONDARY)
-        layout.Add(
-            self._status,
-            0,
-            wx.ALIGN_CENTER_HORIZONTAL | wx.TOP,
-            self.FromDIP(12),
-        )
-
-        self.content_sizer.Add(layout, 0, wx.EXPAND)
-        self.Bind(wx.EVT_SIZE, self._on_size)
-        self.refresh_layout()
-
-    def update_status(self, always_on_top: bool) -> None:
-        state = "on" if always_on_top else "off"
-        self._status.SetLabel(f"Always on top: {state}")
-        self.refresh_layout()
-
-    def refresh_layout(self) -> None:
-        available = max(self.content_width(), self.FromDIP(180))
-        self._subtitle.Wrap(available)
-        self._status.Wrap(available)
-        self.Layout()
-
-    def _on_size(self, event: wx.SizeEvent) -> None:
-        self.refresh_layout()
-        event.Skip()
-
-
 class CaseMonsterFrame(wx.Frame):
-    """Top-level window with the modernised clipboard tooling UI."""
+    """Compact always-on-top toolbar for clipboard conversions."""
+
+    _CLIPBOARD_POLL_MS = 750
 
     def __init__(self, parent: wx.Window | None):
         self._config = wx.Config(appName="caseMonster", vendorName="WarpTyme")
@@ -92,7 +25,12 @@ class CaseMonsterFrame(wx.Frame):
         else:
             self.always_on_top = True
 
-        base_style = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX
+        if self._config.HasEntry("history_limit"):
+            history_limit = max(self._config.ReadInt("history_limit"), 1)
+        else:
+            history_limit = 10
+
+        base_style = wx.CAPTION | wx.CLOSE_BOX | wx.FRAME_TOOL_WINDOW
         style = base_style | (wx.STAY_ON_TOP if self.always_on_top else 0)
 
         super().__init__(
@@ -105,267 +43,170 @@ class CaseMonsterFrame(wx.Frame):
         )
 
         styles.apply_default_theme(self)
-
-        initial_size = self.FromDIP(wx.Size(720, 760))
-        min_size = self.FromDIP(wx.Size(640, 600))
-        self.SetInitialSize(initial_size)
-        self.SetSize(initial_size)
-        self.SetMinSize(min_size)
-        self.SetSizeHints(minW=min_size.width, minH=min_size.height)
         self.SetIcon(load_icon('logoico.ico'))
 
-        self._taskbar_icon: CaseMonsterTaskBarIcon | None = None
+        min_size = self.FromDIP(wx.Size(620, 120))
+        self.SetMinSize(min_size)
+        self.SetInitialSize(min_size)
 
-        frame_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._history = ClipboardHistory(history_limit)
+        self._history_entries: list[str] = []
 
-        border = self.FromDIP(24)
+        self._clipboard_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self._on_clipboard_timer, self._clipboard_timer)
+        self._clipboard_timer.Start(self._CLIPBOARD_POLL_MS)
 
-        self.content_panel = wx.ScrolledWindow(self, style=wx.VSCROLL)
-        styles.apply_default_theme(self.content_panel)
-        self.content_panel.SetBackgroundColour(styles.SURFACE_HIGHLIGHT)
-        self.content_panel.SetScrollRate(0, self.FromDIP(16))
-        frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, border)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        padding = self.FromDIP(8)
 
-        content = wx.BoxSizer(wx.VERTICAL)
+        toolbar_panel = wx.Panel(self)
+        styles.apply_default_theme(toolbar_panel)
+        toolbar_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
+        toolbar_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        toolbar_panel.SetSizer(toolbar_sizer)
 
-        hero = HeroPanel(self.content_panel)
-        content.Add(hero, 0, wx.EXPAND)
-        content.AddSpacer(self.FromDIP(24))
-        self._hero = hero
+        outer.Add(toolbar_panel, 1, wx.EXPAND | wx.ALL, padding)
+        self.SetSizer(outer)
 
-        panel_padding = 24
-        action_panel = RoundedPanel(
-            self.content_panel,
-            padding=panel_padding,
-            elevation=2,
-        )
-        action_panel.SetForegroundColour(styles.FOREGROUND_COLOUR)
-        action_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
-        panel_body = action_panel.content_sizer
+        brand = wx.StaticText(toolbar_panel, label="caseMonster")
+        brand.SetFont(styles.get_font("button"))
+        brand.SetForegroundColour(styles.ACCENT_PRIMARY)
+        toolbar_sizer.Add(brand, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(8))
 
-        heading_row = wx.BoxSizer(wx.HORIZONTAL)
-        heading_col = wx.BoxSizer(wx.VERTICAL)
+        self.history_choice = wx.Choice(toolbar_panel)
+        self.history_choice.SetMinSize(self.FromDIP(wx.Size(220, 36)))
+        toolbar_sizer.Add(self.history_choice, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(8))
 
-        heading = create_section_heading(action_panel, "Pick a transformation")
-        heading_col.Add(heading, 0)
+        history_label = wx.StaticText(toolbar_panel, label="History")
+        history_label.SetForegroundColour(styles.SUBTLE_TEXT)
+        toolbar_sizer.Add(history_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(4))
 
-        caption = create_caption(
-            action_panel,
-            "caseMonster captures your highlighted text, applies the tone, and pastes it back instantly.",
-        )
-        heading_col.Add(caption, 0, wx.TOP, self.FromDIP(4))
-        heading_row.Add(heading_col, 1, wx.ALIGN_CENTER_VERTICAL)
+        self._history_spin = wx.SpinCtrl(toolbar_panel, min=1, max=50, initial=self._history.limit)
+        self._history_spin.SetToolTip("Number of clipboard entries to keep")
+        self._history_spin.Bind(wx.EVT_SPINCTRL, self._on_history_limit_changed)
+        self._history_spin.Bind(wx.EVT_TEXT, self._on_history_limit_changed)
+        self._history_spin.SetMinSize(self.FromDIP(wx.Size(64, 32)))
+        toolbar_sizer.Add(self._history_spin, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(12))
 
-        self.settings_button = AccentButton(
-            action_panel,
-            "Settings",
-            styles.ACCENT_NEUTRAL,
-        )
-        self.settings_button.SetMinSize(self.FromDIP(wx.Size(160, 48)))
-        heading_row.Add(
-            self.settings_button,
-            0,
-            wx.ALIGN_CENTER_VERTICAL | wx.LEFT,
-            self.FromDIP(12),
-        )
-
-        panel_body.Add(heading_row, 0, wx.EXPAND)
-        panel_body.AddSpacer(self.FromDIP(16))
-
-        gap = self.FromDIP(12)
-        button_grid = wx.FlexGridSizer(0, 2, gap, gap)
-        button_grid.AddGrowableCol(0, 1)
-        button_grid.AddGrowableCol(1, 1)
-
-        self.upper_button = AccentButton(action_panel, "UPPERCASE", styles.ACCENT_PRIMARY)
-        button_grid.Add(self.upper_button, 0, wx.EXPAND)
-
-        self.title_button = AccentButton(action_panel, "Title Case", styles.ACCENT_SECONDARY)
-        button_grid.Add(self.title_button, 0, wx.EXPAND)
-
-        self.lower_button = AccentButton(action_panel, "lowercase", styles.ACCENT_NEUTRAL)
-        button_grid.Add(self.lower_button, 0, wx.EXPAND)
-
-        self.funky_button = AccentButton(action_panel, "Sentence case", styles.ACCENT_TERTIARY)
-        button_grid.Add(self.funky_button, 0, wx.EXPAND)
-
-        self._buttons = [
-            self.upper_button,
-            self.title_button,
-            self.lower_button,
-            self.funky_button,
+        button_specs = [
+            ("Upper", "upper"),
+            ("Title", "title"),
+            ("Lower", "lower"),
+            ("Sentence", "sentence"),
         ]
 
-        button_item = panel_body.Add(button_grid, 0, wx.EXPAND)
-        self._button_grid = button_grid
-        self._button_columns = 2
-        self._button_sizer_item = button_item
+        self._buttons: dict[str, wx.Button] = {}
+        for label, mode in button_specs:
+            button = wx.Button(toolbar_panel, label=label)
+            button.SetMinSize(self.FromDIP(wx.Size(90, 36)))
+            button.Bind(wx.EVT_BUTTON, self._make_action_handler(mode))
+            toolbar_sizer.Add(button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(4))
+            self._buttons[mode] = button
 
-        helper_caption = create_caption(
-            action_panel,
-            "Tip: Pin your favourite style to the tray for a one-click conversion from anywhere.",
-        )
-        panel_body.Add(helper_caption, 0, wx.TOP, self.FromDIP(18))
+        self._pin_toggle = wx.ToggleButton(toolbar_panel, label="On top")
+        self._pin_toggle.SetValue(self.always_on_top)
+        self._pin_toggle.Bind(wx.EVT_TOGGLEBUTTON, self._on_pin_toggled)
+        self._pin_toggle.SetMinSize(self.FromDIP(wx.Size(80, 36)))
+        toolbar_sizer.Add(self._pin_toggle, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        self._action_panel = action_panel
-        self._action_caption = caption
-        self._helper_caption = helper_caption
-
-        content.Add(action_panel, 0, wx.EXPAND)
-        content.AddSpacer(self.FromDIP(24))
-
-        insights_panel = RoundedPanel(
-            self.content_panel,
-            padding=20,
-            elevation=1,
-        )
-        insights_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
-        insights_body = insights_panel.content_sizer
-
-        insights_body.Add(create_section_heading(insights_panel, "Why people love caseMonster"), 0)
-        insights_body.AddSpacer(self.FromDIP(12))
-        insights_body.Add(
-            FeatureList(
-                insights_panel,
-                [
-                    "Instantly toggles between styles without touching formatting menus.",
-                    "Remembers your always-on-top preference for effortless workflows.",
-                    "Works from the tray so you can keep your workspace uncluttered.",
-                ],
-            ),
-            0,
-            wx.EXPAND,
-        )
-
-        content.Add(insights_panel, 0, wx.EXPAND)
-        content.AddSpacer(self.FromDIP(24))
-
-        footer = create_caption(
-            self.content_panel,
-            "Need a refresher? Choose Help → How to use or right-click the tray icon for quick actions.",
-        )
-        content.Add(footer, 0, wx.ALIGN_CENTER_HORIZONTAL)
-
-        content.AddStretchSpacer()
-
-        self.content_panel.SetSizer(content)
-        self.content_panel.FitInside()
-        self.SetSizer(frame_sizer)
+        self._taskbar_icon: CaseMonsterTaskBarIcon | None = CaseMonsterTaskBarIcon(self)
 
         self._apply_shadow_effect()
-
-        self.Layout()
-
-        self._footer = footer
-        self._two_column_threshold = self.FromDIP(420)
-
-        initial_action_width = max(action_panel.GetSize().width, self._two_column_threshold)
-        self._update_action_wrapping(initial_action_width)
-        footer_wrap_base = self.FromDIP(480)
-        initial_footer_width = max(self.content_panel.GetSize().width, footer_wrap_base)
-        self._update_footer_wrapping(initial_footer_width)
-        self._hero.refresh_layout()
-
-        action_panel.Bind(wx.EVT_SIZE, self._on_action_panel_size)
-        self.content_panel.Bind(wx.EVT_SIZE, self._on_content_panel_size)
-
-        menubar = wx.MenuBar()
-        help_menu = wx.Menu()
-        self._help_item = help_menu.Append(wx.ID_ANY, "How to use")
-        menubar.Append(help_menu, "Help")
-        self.SetMenuBar(menubar)
-
+        self._refresh_history_choice()
         self.Centre(wx.BOTH)
 
-        # Event bindings
-        self.upper_button.Bind(wx.EVT_BUTTON, lambda event: self._run_action("upper", event))
-        self.lower_button.Bind(wx.EVT_BUTTON, lambda event: self._run_action("lower", event))
-        self.title_button.Bind(wx.EVT_BUTTON, lambda event: self._run_action("title", event))
-        self.funky_button.Bind(wx.EVT_BUTTON, lambda event: self._run_action("sentence", event))
-        self.settings_button.Bind(wx.EVT_BUTTON, self._on_settings_clicked)
-        self.Bind(wx.EVT_MENU, self._on_help_requested, self._help_item)
         self.Bind(wx.EVT_CLOSE, self._on_close)
 
-        self._taskbar_icon = CaseMonsterTaskBarIcon(self)
+    def _make_action_handler(self, mode: str) -> Callable[[wx.CommandEvent], None]:
+        def handler(event: wx.CommandEvent) -> None:
+            self._run_action(mode)
+            event.Skip()
 
-        self._hero.update_status(self.always_on_top)
+        return handler
 
-    def _apply_shadow_effect(self):
-        """Hint at a drop shadow without washing out the UI."""
+    def _format_history_label(self, text: str) -> str:
+        collapsed = " ".join(line.strip() for line in text.splitlines())
+        collapsed = collapsed.strip()
+        if not collapsed:
+            collapsed = "(whitespace)"
+        max_length = 48
+        if len(collapsed) > max_length:
+            collapsed = collapsed[: max_length - 1] + "…"
+        return collapsed
 
-        if "WX_MAC" in wx.PlatformInfo:
+    def _refresh_history_choice(self, *, selected_text: Optional[str] = None) -> None:
+        if selected_text is None and hasattr(self, "history_choice"):
+            index = self.history_choice.GetSelection()
+            if 0 < index <= len(self._history_entries):
+                selected_text = self._history_entries[index - 1]
+
+        self._history_entries = self._history.items
+        labels = ["Current selection"] + [
+            self._format_history_label(text) for text in self._history_entries
+        ]
+        self.history_choice.Set(labels)
+
+        if selected_text and selected_text in self._history_entries:
+            selection_index = self._history_entries.index(selected_text) + 1
+        else:
+            selection_index = 0
+
+        if labels:
+            self.history_choice.SetSelection(selection_index)
+
+    def _run_action(self, mode: str) -> None:
+        selection = self.history_choice.GetSelection()
+        source_text = None
+        if 0 < selection <= len(self._history_entries):
+            source_text = self._history_entries[selection - 1]
+
+        result = actions.run(mode, source_text=source_text)
+        if result is None:
             return
 
-        # Windows already provides a drop shadow and applying SetTransparent
-        # makes the whole window semi-opaque, which results in the washed out
-        # look reported by users. Keep the behaviour for GTK where it helps to
-        # soften the window edges, but otherwise skip it.
-        if "WXMSW" in wx.PlatformInfo:
-            return
+        original, transformed = result
+        self._history.record(original)
+        self._history.record(transformed)
+        self._refresh_history_choice(selected_text=source_text)
 
+    def _on_pin_toggled(self, event: wx.CommandEvent) -> None:
+        self.set_always_on_top(self._pin_toggle.GetValue())
+        event.Skip()
+
+    def _on_history_limit_changed(self, event: wx.CommandEvent) -> None:
         try:
-            self.SetTransparent(245)
-        except wx.NotImplementedError:
-            pass
-
-    def _update_action_wrapping(self, panel_width: int) -> None:
-        if panel_width <= 0:
+            raw_value = int(self._history_spin.GetValue())
+        except (TypeError, ValueError):
             return
-        self._update_button_layout(panel_width)
-        available = max(
-            panel_width - 2 * self._action_panel.padding,
-            self.FromDIP(220),
-        )
-        self._action_caption.Wrap(available)
-        self._helper_caption.Wrap(available)
-        self._action_panel.Layout()
-
-    def _on_action_panel_size(self, event: wx.SizeEvent) -> None:
-        self._update_action_wrapping(event.GetSize().width)
+        max_allowed = max(self._history_spin.GetMax(), 1)
+        value = min(max(raw_value, 1), max_allowed)
+        if self._history_spin.GetValue() != value:
+            self._history_spin.SetValue(value)
+        self._history.update_limit(value)
+        self._refresh_history_choice()
         event.Skip()
 
-    def _update_button_layout(self, panel_width: int) -> None:
-        available = panel_width - 2 * self._action_panel.padding
-        desired_columns = 2 if available >= self._two_column_threshold else 1
-        if desired_columns == self._button_columns or desired_columns <= 0:
+    def _on_clipboard_timer(self, event: wx.TimerEvent) -> None:
+        text = self._read_clipboard()
+        if text is None:
             return
-
-        gap = self.FromDIP(12)
-        new_grid = wx.FlexGridSizer(0, desired_columns, gap, gap)
-        new_grid.SetFlexibleDirection(wx.HORIZONTAL)
-        new_grid.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_ALL)
-
-        for button in self._buttons:
-            new_grid.Add(button, 0, wx.EXPAND)
-
-        for column in range(desired_columns):
-            new_grid.AddGrowableCol(column, 1)
-
-        self._button_sizer_item.SetSizer(new_grid)
-        self._button_grid = new_grid
-        self._button_columns = desired_columns
-        self._action_panel.Layout()
-
-    def _update_footer_wrapping(self, width: int) -> None:
-        if width <= 0:
-            return
-        available = max(width - self.FromDIP(120), self.FromDIP(220))
-        self._footer.Wrap(available)
-        self.content_panel.Layout()
-
-    def _on_content_panel_size(self, event: wx.SizeEvent) -> None:
-        size = event.GetSize()
-        self._update_footer_wrapping(size.width)
-        self._hero.refresh_layout()
-        self.content_panel.FitInside()
+        before = self._history.items
+        self._history.record(text)
+        if self._history.items != before:
+            self._refresh_history_choice()
         event.Skip()
 
-    def _run_action(self, mode: str, event: wx.CommandEvent):
-        actions.run(mode)
-        event.Skip()
+    def _read_clipboard(self) -> Optional[str]:
+        try:
+            value = pyperclip.paste()
+        except AttributeError:
+            return None
+        except Exception:  # pragma: no cover - clipboard access can fail unexpectedly
+            return None
+        return value or None
 
     def set_always_on_top(self, enabled: bool) -> None:
-        self.always_on_top = enabled
+        self.always_on_top = bool(enabled)
         style = self.GetWindowStyleFlag()
         if enabled:
             style |= wx.STAY_ON_TOP
@@ -374,27 +215,27 @@ class CaseMonsterFrame(wx.Frame):
         self.SetWindowStyleFlag(style)
         if enabled:
             self.Raise()
+        if self._pin_toggle.GetValue() != enabled:
+            self._pin_toggle.SetValue(enabled)
         self._config.WriteBool("always_on_top", self.always_on_top)
         self._config.Flush()
-        self._hero.update_status(self.always_on_top)
 
-    def _on_settings_clicked(self, event: wx.CommandEvent):
-        dialog = SettingsDialog(self, self.always_on_top)
-        result = dialog.ShowModal()
-        if result == wx.ID_OK:
-            self.set_always_on_top(dialog.always_on_top)
-            if dialog.hide_requested:
-                self.Hide()
-        dialog.Destroy()
-        event.Skip()
+    def _apply_shadow_effect(self) -> None:
+        if "WX_MAC" in wx.PlatformInfo:
+            return
+        if "WXMSW" in wx.PlatformInfo:
+            return
+        try:
+            self.SetTransparent(245)
+        except wx.NotImplementedError:  # pragma: no cover - platform guard
+            pass
 
-    def _on_help_requested(self, event: wx.CommandEvent):
-        open_help_guide(self)
-        event.Skip()
-
-    def _on_close(self, event: wx.CloseEvent):
+    def _on_close(self, event: wx.CloseEvent) -> None:
         self._config.WriteBool("always_on_top", self.always_on_top)
+        self._config.WriteInt("history_limit", self._history.limit)
         self._config.Flush()
+        if self._clipboard_timer.IsRunning():
+            self._clipboard_timer.Stop()
         if self._taskbar_icon:
             self._taskbar_icon.Destroy()
             self._taskbar_icon = None
