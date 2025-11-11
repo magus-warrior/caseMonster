@@ -10,7 +10,7 @@ from . import styles
 
 
 class RoundedPanel(wx.Panel):
-    """Panel that draws a rounded rectangle background and subtle border."""
+    """Panel that draws an elevated rounded rectangle background."""
 
     def __init__(
         self,
@@ -19,6 +19,8 @@ class RoundedPanel(wx.Panel):
         radius: int = 16,
         padding: int = 20,
         background: wx.Colour | None = None,
+        border_colour: wx.Colour | None = None,
+        elevation: int = 1,
     ) -> None:
         super().__init__(parent, style=wx.BORDER_NONE)
 
@@ -27,6 +29,8 @@ class RoundedPanel(wx.Panel):
         self._radius = self.FromDIP(radius)
         self._padding = self.FromDIP(padding)
         self._background = background or styles.CONTAINER_BACKGROUND
+        self._border_colour = border_colour or styles.CONTAINER_BORDER
+        self._elevation = max(elevation, 0)
 
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.Bind(wx.EVT_PAINT, self._on_paint)
@@ -63,15 +67,28 @@ class RoundedPanel(wx.Panel):
 
         gc = wx.GraphicsContext.Create(dc)
         if gc:
+            if self._elevation:
+                base = styles.SHADOW_COLOUR
+                layers = styles.ELEVATION_SHADOWS.get(self._elevation, ())
+                for offset, alpha in layers:
+                    width = size.width - 2 * offset
+                    height = size.height - 2 * offset
+                    if width <= 0 or height <= 0:
+                        continue
+                    colour = wx.Colour(base.Red(), base.Green(), base.Blue(), alpha)
+                    gc.SetPen(wx.TRANSPARENT_PEN)
+                    gc.SetBrush(wx.Brush(colour))
+                    gc.DrawRoundedRectangle(
+                        offset,
+                        offset,
+                        width,
+                        height,
+                        max(self._radius + self.FromDIP(2) - offset, 4),
+                    )
+
             path = gc.CreatePath()
-            path.AddRoundedRectangle(
-                0,
-                0,
-                size.width,
-                size.height,
-                self._radius,
-            )
-            gc.SetPen(wx.Pen(styles.BORDER_SUBTLE, 1))
+            path.AddRoundedRectangle(0, 0, size.width, size.height, self._radius)
+            gc.SetPen(wx.Pen(self._border_colour, 1))
             gc.SetBrush(wx.Brush(self._background))
             gc.DrawPath(path)
         event.Skip(False)
@@ -85,9 +102,11 @@ class AccentButton(wx.Button):
         super().__init__(parent, wx.ID_ANY, label, style=style)
 
         self._base_colour = colour
-        self._hover_colour = styles.lighten_colour(colour, 24)
-        self._pressed_colour = styles.lighten_colour(colour, 8)
+        self._hover_colour = styles.lighten_colour(colour, 20)
+        self._pressed_colour = styles.darken_colour(colour, 18)
         self._radius = self.FromDIP(12)
+        self._shadow_layers = styles.ELEVATION_SHADOWS.get(2, ())
+        self._is_focused = False
 
         min_size = self.FromDIP(wx.Size(176, 56))
         self.SetMinSize(min_size)
@@ -95,6 +114,7 @@ class AccentButton(wx.Button):
         self.SetForegroundColour(styles.BUTTON_TEXT_COLOUR)
         self.SetBackgroundColour(self._base_colour)
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 
         self.Bind(wx.EVT_ENTER_WINDOW, self._on_hover)
         self.Bind(wx.EVT_LEAVE_WINDOW, self._on_leave)
@@ -102,6 +122,8 @@ class AccentButton(wx.Button):
         self.Bind(wx.EVT_LEFT_UP, self._on_release)
         self.Bind(wx.EVT_PAINT, self._on_paint)
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
+        self.Bind(wx.EVT_SET_FOCUS, self._on_focus)
+        self.Bind(wx.EVT_KILL_FOCUS, self._on_blur)
 
     def _set_colour(self, colour: wx.Colour) -> None:
         self.SetBackgroundColour(colour)
@@ -124,6 +146,16 @@ class AccentButton(wx.Button):
         self._set_colour(self._hover_colour if inside else self._base_colour)
         event.Skip()
 
+    def _on_focus(self, event: wx.FocusEvent) -> None:
+        self._is_focused = True
+        self.Refresh()
+        event.Skip()
+
+    def _on_blur(self, event: wx.FocusEvent) -> None:
+        self._is_focused = False
+        self.Refresh()
+        event.Skip()
+
     def _on_paint(self, event: wx.PaintEvent):
         size = self.GetClientSize()
         dc = wx.AutoBufferedPaintDC(self)
@@ -132,9 +164,31 @@ class AccentButton(wx.Button):
 
         gc = wx.GraphicsContext.Create(dc)
         if gc:
+            base = styles.SHADOW_COLOUR
+            for offset, alpha in self._shadow_layers:
+                width = size.width - 2 * offset
+                height = size.height - 2 * offset
+                if width <= 0 or height <= 0:
+                    continue
+                colour = wx.Colour(base.Red(), base.Green(), base.Blue(), alpha)
+                gc.SetPen(wx.TRANSPARENT_PEN)
+                gc.SetBrush(wx.Brush(colour))
+                gc.DrawRoundedRectangle(
+                    offset,
+                    offset,
+                    width,
+                    height,
+                    max(self._radius + self.FromDIP(2) - offset, 4),
+                )
+
             path = gc.CreatePath()
             path.AddRoundedRectangle(0, 0, size.width, size.height, self._radius)
-            gc.SetPen(wx.Pen(styles.lighten_colour(self.GetBackgroundColour(), 6), 1))
+            border_colour = styles.lighten_colour(self.GetBackgroundColour(), 12)
+            border_width = 1
+            if self._is_focused:
+                border_colour = styles.ACCENT_PRIMARY
+                border_width = max(self.FromDIP(2), 1)
+            gc.SetPen(wx.Pen(border_colour, border_width))
             gc.SetBrush(wx.Brush(self.GetBackgroundColour()))
             gc.DrawPath(path)
 
@@ -164,7 +218,7 @@ class FeatureList(wx.Panel):
             row = wx.BoxSizer(wx.HORIZONTAL)
             bullet = wx.StaticText(self, label="•")
             bullet.SetFont(styles.get_font("headline"))
-            bullet.SetForegroundColour(styles.ACCENT_TERTIARY)
+            bullet.SetForegroundColour(styles.ACCENT_PRIMARY)
             row.Add(bullet, 0, wx.RIGHT, self._spacing)
 
             text = wx.StaticText(self, label=item)

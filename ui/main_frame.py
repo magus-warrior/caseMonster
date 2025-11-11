@@ -21,12 +21,13 @@ class HeroPanel(RoundedPanel):
     """Hero-style header that introduces the application purpose."""
 
     def __init__(self, parent: wx.Window):
-        background = wx.Colour(40, 48, 66)
+        background = styles.SURFACE_TINT
         super().__init__(
             parent,
             radius=22,
             padding=24,
             background=background,
+            elevation=2,
         )
         self.SetBackgroundColour(background)
 
@@ -46,7 +47,7 @@ class HeroPanel(RoundedPanel):
 
         subtitle = create_caption(
             self,
-            "Convert your copied text into the perfect tone before you paste it anywhere.",
+            "Polish your clipboard with natural, ready-to-send prose before you paste it anywhere.",
         )
         layout.Add(subtitle, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, self.FromDIP(4))
 
@@ -121,6 +122,7 @@ class CaseMonsterFrame(wx.Frame):
 
         self.content_panel = wx.ScrolledWindow(self, style=wx.VSCROLL)
         styles.apply_default_theme(self.content_panel)
+        self.content_panel.SetBackgroundColour(styles.SURFACE_HIGHLIGHT)
         self.content_panel.SetScrollRate(0, self.FromDIP(16))
         frame_sizer.Add(self.content_panel, 1, wx.EXPAND | wx.ALL, border)
 
@@ -132,7 +134,11 @@ class CaseMonsterFrame(wx.Frame):
         self._hero = hero
 
         panel_padding = 24
-        action_panel = RoundedPanel(self.content_panel, padding=panel_padding)
+        action_panel = RoundedPanel(
+            self.content_panel,
+            padding=panel_padding,
+            elevation=2,
+        )
         action_panel.SetForegroundColour(styles.FOREGROUND_COLOUR)
         action_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
         panel_body = action_panel.content_sizer
@@ -145,14 +151,14 @@ class CaseMonsterFrame(wx.Frame):
 
         caption = create_caption(
             action_panel,
-            "caseMonster grabs your selected text, applies the style, and pastes it back instantly.",
+            "caseMonster captures your highlighted text, applies the tone, and pastes it back instantly.",
         )
         heading_col.Add(caption, 0, wx.TOP, self.FromDIP(4))
         heading_row.Add(heading_col, 1, wx.ALIGN_CENTER_VERTICAL)
 
         self.settings_button = AccentButton(
             action_panel,
-            "⚙ Settings",
+            "Settings",
             styles.ACCENT_NEUTRAL,
         )
         self.settings_button.SetMinSize(self.FromDIP(wx.Size(160, 48)))
@@ -197,7 +203,7 @@ class CaseMonsterFrame(wx.Frame):
 
         helper_caption = create_caption(
             action_panel,
-            "Tip: Use the tray icon for a single click conversion even when the window is hidden.",
+            "Tip: Pin your favourite style to the tray for a one-click conversion from anywhere.",
         )
         panel_body.Add(helper_caption, 0, wx.TOP, self.FromDIP(18))
 
@@ -208,7 +214,11 @@ class CaseMonsterFrame(wx.Frame):
         content.Add(action_panel, 0, wx.EXPAND)
         content.AddSpacer(self.FromDIP(24))
 
-        insights_panel = RoundedPanel(self.content_panel, padding=20)
+        insights_panel = RoundedPanel(
+            self.content_panel,
+            padding=20,
+            elevation=1,
+        )
         insights_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
         insights_body = insights_panel.content_sizer
 
@@ -232,7 +242,7 @@ class CaseMonsterFrame(wx.Frame):
 
         footer = create_caption(
             self.content_panel,
-            "Need help? Choose Help → How to use or right-click the tray icon for quick actions.",
+            "Need a refresher? Choose Help → How to use or right-click the tray icon for quick actions.",
         )
         content.Add(footer, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
