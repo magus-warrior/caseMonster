@@ -25,6 +25,7 @@ from ui.main_frame import (
     ensure_history_limit,
 )
 from ui.styles import BACKGROUND_COLOUR
+from ui.tray import CaseMonsterTray
 
 # Import styled widgets so that the KV language recognises them
 from ui.components import AccentButton, RoundedPanel  # noqa: F401  # pylint: disable=unused-import
@@ -52,6 +53,8 @@ class CaseMonsterApp(App):
         self._history_entries: list[str] = []
         self._clipboard_event: Optional[ClockEvent] = None
         self.use_kivy_settings = False
+        self._tray: Optional[CaseMonsterTray] = None
+        self._window_visible = True
 
     def build_config(self, config):
         config.setdefaults(
@@ -76,6 +79,7 @@ class CaseMonsterApp(App):
         self._load_preferences()
         self._refresh_history()
         self._apply_always_on_top()
+        self._bind_window_events()
 
         root = CaseMonsterRoot()
         self._clipboard_event = Clock.schedule_interval(
@@ -83,11 +87,32 @@ class CaseMonsterApp(App):
         )
         return root
 
+    def on_start(self):
+        if self._tray is None:
+            tray = CaseMonsterTray(self)
+            if tray.start():
+                tray.update_window_visibility(self._window_visible)
+                tray.update_always_on_top(self.always_on_top)
+                self._tray = tray
+
     def on_stop(self):
         if self._clipboard_event is not None:
             self._clipboard_event.cancel()
             self._clipboard_event = None
         self._write_preferences()
+        if self._tray is not None:
+            self._tray.stop()
+            self._tray = None
+
+    @property
+    def window_visible(self) -> bool:
+        return self._window_visible
+
+    def toggle_window_visibility(self) -> None:
+        if self.window_visible:
+            self.hide_window()
+        else:
+            self.show_window()
 
     def _load_preferences(self) -> None:
         config = self.config
@@ -112,6 +137,31 @@ class CaseMonsterApp(App):
             Window.topmost = bool(self.always_on_top)
         except Exception:  # pragma: no cover - platform dependent attribute
             pass
+        if self._tray is not None:
+            self._tray.update_always_on_top(self.always_on_top)
+
+    def _bind_window_events(self) -> None:
+        for event_name in ("on_show", "on_restore"):
+            try:
+                Window.bind(**{event_name: self._on_window_shown})
+            except TypeError:  # pragma: no cover - not all platforms expose events
+                pass
+        for event_name in ("on_hide", "on_minimize"):
+            try:
+                Window.bind(**{event_name: self._on_window_hidden})
+            except TypeError:  # pragma: no cover - not all platforms expose events
+                pass
+
+    def _on_window_shown(self, *_args) -> None:
+        self._set_window_visibility(True)
+
+    def _on_window_hidden(self, *_args) -> None:
+        self._set_window_visibility(False)
+
+    def _set_window_visibility(self, visible: bool) -> None:
+        self._window_visible = bool(visible)
+        if self._tray is not None:
+            self._tray.update_window_visibility(self._window_visible)
 
     def _poll_clipboard(self, _dt: float) -> None:
         text = self._read_clipboard()
@@ -213,6 +263,22 @@ class CaseMonsterApp(App):
                 Window.hide()
             except Exception:
                 pass
+        self._set_window_visibility(False)
+
+    def show_window(self) -> None:
+        try:
+            Window.restore()
+        except Exception:  # pragma: no cover - platform dependent
+            pass
+        try:
+            Window.show()
+        except Exception:  # pragma: no cover - platform dependent
+            pass
+        try:
+            Window.raise_window()
+        except Exception:  # pragma: no cover - platform dependent
+            pass
+        self._set_window_visibility(True)
 
 
 def launch_app() -> int:

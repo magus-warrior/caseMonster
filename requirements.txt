@@ -1,3 +1,5 @@
 pyperclip==1.8.2
 pyautogui==0.9.54
 kivy==2.2.1
+pystray==0.19.5
+pillow==9.5.0
