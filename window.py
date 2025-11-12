@@ -11,7 +11,13 @@ from kivy.clock import Clock
 from kivy.clock import ClockEvent
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, StringProperty
+from kivy.logger import Logger
+from kivy.properties import (
+    BooleanProperty,
+    ListProperty,
+    NumericProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 
 from ui import actions
@@ -66,11 +72,20 @@ class CaseMonsterApp(App):
         )
 
     def build(self):
-        Builder.load_file(str(_KV_PATH))
+        Logger.info("CaseMonster: build() starting")
+        try:
+            Builder.load_file(str(_KV_PATH))
+        except Exception:  # pragma: no cover - runtime diagnostics
+            Logger.exception("CaseMonster: failed to load KV definition at %s", _KV_PATH)
+            raise
+
         self.title = "caseMonster"
         icon = icon_path("logoico.ico") or icon_path("logo.png")
         if icon:
+            Logger.info("CaseMonster: applying window icon from %s", icon)
             self.icon = icon
+        else:
+            Logger.warning("CaseMonster: no icon asset could be located")
 
         Window.clearcolor = BACKGROUND_COLOUR
         Window.minimum_width = 620
@@ -82,20 +97,30 @@ class CaseMonsterApp(App):
         self._bind_window_events()
 
         root = CaseMonsterRoot()
+        Logger.info("CaseMonster: starting clipboard poll every %.2fs", CLIPBOARD_POLL_SECONDS)
         self._clipboard_event = Clock.schedule_interval(
             self._poll_clipboard, CLIPBOARD_POLL_SECONDS
         )
         return root
 
     def on_start(self):
+        Logger.info("CaseMonster: on_start() invoked")
         if self._tray is None:
             tray = CaseMonsterTray(self)
+            Logger.info(
+                "CaseMonster: tray availability = %s",
+                tray.available,
+            )
             if tray.start():
+                Logger.info("CaseMonster: tray started successfully")
                 tray.update_window_visibility(self._window_visible)
                 tray.update_always_on_top(self.always_on_top)
                 self._tray = tray
+            else:
+                Logger.warning("CaseMonster: tray could not be initialised")
 
     def on_stop(self):
+        Logger.info("CaseMonster: stopping application")
         if self._clipboard_event is not None:
             self._clipboard_event.cancel()
             self._clipboard_event = None
@@ -117,45 +142,69 @@ class CaseMonsterApp(App):
     def _load_preferences(self) -> None:
         config = self.config
         section = "preferences"
+        Logger.info("CaseMonster: loading preferences from section '%s'", section)
         if config.has_option(section, "always_on_top"):
             self.always_on_top = config.getboolean(section, "always_on_top")
         if config.has_option(section, "history_limit"):
             limit = ensure_history_limit(config.getint(section, "history_limit"))
             self.history_limit = limit
             self.history.update_limit(limit)
+            Logger.info(
+                "CaseMonster: history limit set to %s (config)",
+                limit,
+            )
         else:
             self.history.update_limit(DEFAULT_HISTORY_LIMIT)
+            Logger.info(
+                "CaseMonster: history limit defaulted to %s",
+                DEFAULT_HISTORY_LIMIT,
+            )
 
     def _write_preferences(self) -> None:
         section = "preferences"
         self.config.set(section, "always_on_top", "1" if self.always_on_top else "0")
         self.config.set(section, "history_limit", str(int(self.history_limit)))
         self.config.write()
+        Logger.info(
+            "CaseMonster: wrote preferences (always_on_top=%s, history_limit=%s)",
+            self.always_on_top,
+            self.history_limit,
+        )
 
     def _apply_always_on_top(self) -> None:
+        Logger.info("CaseMonster: applying always_on_top=%s", self.always_on_top)
         try:
             Window.topmost = bool(self.always_on_top)
         except Exception:  # pragma: no cover - platform dependent attribute
-            pass
+            Logger.warning("CaseMonster: window manager does not support 'topmost'")
         if self._tray is not None:
             self._tray.update_always_on_top(self.always_on_top)
 
     def _bind_window_events(self) -> None:
+        Logger.info("CaseMonster: binding window visibility events")
         for event_name in ("on_show", "on_restore"):
             try:
                 Window.bind(**{event_name: self._on_window_shown})
             except TypeError:  # pragma: no cover - not all platforms expose events
-                pass
+                Logger.debug(
+                    "CaseMonster: window event '%s' not supported on this platform",
+                    event_name,
+                )
         for event_name in ("on_hide", "on_minimize"):
             try:
                 Window.bind(**{event_name: self._on_window_hidden})
             except TypeError:  # pragma: no cover - not all platforms expose events
-                pass
+                Logger.debug(
+                    "CaseMonster: window event '%s' not supported on this platform",
+                    event_name,
+                )
 
     def _on_window_shown(self, *_args) -> None:
+        Logger.info("CaseMonster: window shown")
         self._set_window_visibility(True)
 
     def _on_window_hidden(self, *_args) -> None:
+        Logger.info("CaseMonster: window hidden")
         self._set_window_visibility(False)
 
     def _set_window_visibility(self, visible: bool) -> None:
@@ -176,11 +225,15 @@ class CaseMonsterApp(App):
         try:
             value = clipboard_paste()
         except ClipboardUnavailable:
+            Logger.warning("CaseMonster: clipboard unavailable")
             return None
         except AttributeError:
+            Logger.exception("CaseMonster: clipboard backend missing attribute")
             return None
         except Exception:  # pragma: no cover - clipboard can fail unexpectedly
+            Logger.exception("CaseMonster: unexpected clipboard error")
             return None
+        Logger.debug("CaseMonster: clipboard text read (%d chars)", len(value or ""))
         return value or None
 
     def _refresh_history(self, *, selected_text: Optional[str] = None) -> None:
@@ -232,12 +285,14 @@ class CaseMonsterApp(App):
             self.root.ids.history_limit_input.text = str(int(self.history_limit))
 
     def run_action(self, mode: str) -> None:
+        Logger.info("CaseMonster: running action '%s'", mode)
         selection = self.history_selection
         source_text = None
         if 0 < selection <= len(self._history_entries):
             source_text = self._history_entries[selection - 1]
         result = actions.run(mode, source_text=source_text)
         if not result:
+            Logger.info("CaseMonster: action '%s' produced no result", mode)
             return
         original, transformed = result
         self.history.record(original)
@@ -245,6 +300,7 @@ class CaseMonsterApp(App):
         self._refresh_history(selected_text=source_text)
 
     def open_settings(self) -> None:
+        Logger.info("CaseMonster: opening settings popup")
         popup = SettingsPopup(
             always_on_top=self.always_on_top,
             on_toggle_always_on_top=self.set_always_on_top,
@@ -253,38 +309,47 @@ class CaseMonsterApp(App):
         popup.open()
 
     def open_help(self) -> None:
+        Logger.info("CaseMonster: opening help guide")
         popup = open_help_guide()
         if popup is not None:
             popup.open()
 
     def hide_window(self) -> None:
+        Logger.info("CaseMonster: hiding window")
         try:
             Window.minimize()
         except Exception:  # pragma: no cover - platform dependent
             try:
                 Window.hide()
             except Exception:
-                pass
+                Logger.warning("CaseMonster: window hide not supported")
         self._set_window_visibility(False)
 
     def show_window(self) -> None:
+        Logger.info("CaseMonster: showing window")
         try:
             Window.restore()
         except Exception:  # pragma: no cover - platform dependent
-            pass
+            Logger.debug("CaseMonster: window restore not supported")
         try:
             Window.show()
         except Exception:  # pragma: no cover - platform dependent
-            pass
+            Logger.debug("CaseMonster: window show not supported")
         try:
             Window.raise_window()
         except Exception:  # pragma: no cover - platform dependent
-            pass
+            Logger.debug("CaseMonster: window raise not supported")
         self._set_window_visibility(True)
 
 
 def launch_app() -> int:
-    CaseMonsterApp().run()
+    Logger.info("CaseMonster: launching application")
+    try:
+        CaseMonsterApp().run()
+    except Exception:  # pragma: no cover - diagnostic output for runtime errors
+        Logger.exception("CaseMonster: application terminated due to an error")
+        raise
+    Logger.info("CaseMonster: application exited cleanly")
     return 0
 
 
