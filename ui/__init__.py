@@ -1,5 +1,5 @@
 """User interface package for caseMonster."""
 
-from .main_frame import CaseMonsterFrame, launch_app
+from .main_frame import describe_history, ensure_history_limit, format_history_label
 
-__all__ = ["CaseMonsterFrame", "launch_app"]
+__all__ = ["describe_history", "ensure_history_limit", "format_history_label"]

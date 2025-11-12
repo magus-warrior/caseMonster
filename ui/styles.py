@@ -1,149 +1,53 @@
-"""Material-inspired colour palette and typography helpers for the UI."""
+"""Material-inspired palette and helpers adapted for the Kivy UI."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import lru_cache
-from typing import Dict, Tuple
+from typing import Iterable
 
-import wx
-
-# Core Material palette for a light, airy interface
-BACKGROUND_COLOUR = wx.Colour(244, 244, 250)
-FOREGROUND_COLOUR = wx.Colour(34, 39, 49)
-ACCENT_PRIMARY = wx.Colour(103, 80, 164)
-ACCENT_SECONDARY = wx.Colour(30, 131, 114)
-ACCENT_TERTIARY = wx.Colour(233, 136, 64)
-ACCENT_NEUTRAL = wx.Colour(93, 105, 128)
-CONTAINER_BACKGROUND = wx.Colour(255, 255, 255)
-CONTAINER_BORDER = wx.Colour(219, 225, 236)
-SUBTLE_TEXT = wx.Colour(112, 118, 138)
-BORDER_SUBTLE = wx.Colour(206, 212, 226)
-BUTTON_TEXT_COLOUR = wx.Colour(255, 255, 255)
-SURFACE_TINT = wx.Colour(236, 232, 248)
-SURFACE_HIGHLIGHT = wx.Colour(229, 242, 249)
-SHADOW_COLOUR = wx.Colour(15, 23, 42)
-
-# Elevation presets used by cards and buttons. Each tuple contains (offset, alpha)
-# pairs which are drawn as layered rounded rectangles to create a soft shadow.
-ELEVATION_SHADOWS: Dict[int, Tuple[Tuple[int, int], ...]] = {
-    1: ((6, 20), (3, 28)),
-    2: ((8, 16), (4, 26), (2, 34)),
-}
+from kivy.utils import get_color_from_hex
 
 
-@dataclass(frozen=True)
-class FontDefinition:
-    """Declarative description of a UI font role."""
-
-    point_size: int
-    weight: int
-    face_names: Tuple[str, ...]
-    style: int = wx.FONTSTYLE_NORMAL
-    family: int = wx.FONTFAMILY_SWISS
-    underline: bool = False
-
-
-_SANS_SERIF_STACK: Tuple[str, ...] = (
-    "Google Sans",
-    "Roboto",
-    "Product Sans",
-    "Segoe UI",
-    "Inter",
-    "Noto Sans",
-    "Helvetica",
-    "Arial",
-)
-
-_SANS_SERIF_BOLD: Tuple[str, ...] = (
-    "Google Sans Display",
-    "Roboto",
-    "Segoe UI Semibold",
-    "Segoe UI",
-    "Inter",
-    "Noto Sans",
-    "Helvetica Neue",
-    "Arial",
-)
-
-_FONT_DEFINITIONS: Dict[str, FontDefinition] = {
-    "base": FontDefinition(11, wx.FONTWEIGHT_NORMAL, _SANS_SERIF_STACK),
-    "headline": FontDefinition(18, wx.FONTWEIGHT_BOLD, _SANS_SERIF_BOLD),
-    "button": FontDefinition(12, wx.FONTWEIGHT_BOLD, _SANS_SERIF_BOLD),
-    "display": FontDefinition(26, wx.FONTWEIGHT_BOLD, _SANS_SERIF_BOLD),
-    "caption": FontDefinition(10, wx.FONTWEIGHT_NORMAL, _SANS_SERIF_STACK),
-    "mono": FontDefinition(10, wx.FONTWEIGHT_NORMAL, (
-        "JetBrains Mono",
-        "Roboto Mono",
-        "Cascadia Code",
-        "Consolas",
-        "Courier New",
-    )),
-}
+BACKGROUND_COLOUR = get_color_from_hex("#f4f4fa")
+FOREGROUND_COLOUR = get_color_from_hex("#222731")
+ACCENT_PRIMARY = get_color_from_hex("#6750a4")
+ACCENT_SECONDARY = get_color_from_hex("#1e8372")
+ACCENT_TERTIARY = get_color_from_hex("#e98840")
+ACCENT_NEUTRAL = get_color_from_hex("#5d6980")
+CONTAINER_BACKGROUND = get_color_from_hex("#ffffff")
+CONTAINER_BORDER = get_color_from_hex("#dbe1ec")
+SUBTLE_TEXT = get_color_from_hex("#70768a")
+BORDER_SUBTLE = get_color_from_hex("#ced4e2")
+BUTTON_TEXT_COLOUR = get_color_from_hex("#ffffff")
+SURFACE_TINT = get_color_from_hex("#ece8f8")
+SURFACE_HIGHLIGHT = get_color_from_hex("#e5f2f9")
+SHADOW_COLOUR = get_color_from_hex("#0f172a")
 
 
-def lighten_colour(colour: wx.Colour, amount: int = 16) -> wx.Colour:
-    """Return a lighter variant of the provided colour."""
-
-    r = min(colour.Red() + amount, 255)
-    g = min(colour.Green() + amount, 255)
-    b = min(colour.Blue() + amount, 255)
-    return wx.Colour(r, g, b, colour.Alpha())
+def _clamp(value: float) -> float:
+    return min(max(value, 0.0), 1.0)
 
 
-def darken_colour(colour: wx.Colour, amount: int = 16) -> wx.Colour:
-    """Return a darker variant of the provided colour."""
+def lighten_colour(colour: Iterable[float], amount: float = 0.08) -> list[float]:
+    """Return a lighter variant of the provided RGBA colour."""
 
-    r = max(colour.Red() - amount, 0)
-    g = max(colour.Green() - amount, 0)
-    b = max(colour.Blue() - amount, 0)
-    return wx.Colour(r, g, b, colour.Alpha())
+    r, g, b, a = list(colour)
+    return [_clamp(r + amount), _clamp(g + amount), _clamp(b + amount), a]
 
 
-@lru_cache(maxsize=None)
-def get_font(role: str) -> wx.Font:
-    """Fetch the wx.Font for a given semantic role, creating it lazily."""
+def darken_colour(colour: Iterable[float], amount: float = 0.08) -> list[float]:
+    """Return a darker variant of the provided RGBA colour."""
 
-    definition = _FONT_DEFINITIONS.get(role)
-    if definition is None:  # pragma: no cover - defensive guard
-        raise KeyError(f"Unknown font role: {role}")
-
-    last_error: RuntimeError | None = None
-    for face_name in definition.face_names:
-        font = wx.Font(
-            definition.point_size,
-            definition.family,
-            definition.style,
-            definition.weight,
-            definition.underline,
-            face_name,
-        )
-        if font.IsOk():
-            return font
-        last_error = RuntimeError(f"Unable to create font for role '{role}' with face '{face_name}'")
-
-    font = wx.Font(
-        definition.point_size,
-        definition.family,
-        definition.style,
-        definition.weight,
-        definition.underline,
-        "",
-    )
-    if font.IsOk():
-        return font
-
-    if last_error is not None:  # pragma: no cover - defensive guard
-        raise last_error
-    raise RuntimeError(f"Unable to create font for role '{role}'")
+    r, g, b, a = list(colour)
+    return [_clamp(r - amount), _clamp(g - amount), _clamp(b - amount), a]
 
 
-def apply_default_theme(window: wx.Window) -> None:
-    """Apply the base colour palette and font to a window hierarchy."""
+def apply_default_theme(widget) -> None:
+    """Best-effort theming hook for legacy callers."""
 
-    window.SetBackgroundColour(BACKGROUND_COLOUR)
-    window.SetForegroundColour(FOREGROUND_COLOUR)
-    window.SetFont(get_font("base"))
+    if hasattr(widget, "background_color"):
+        widget.background_color = BACKGROUND_COLOUR
+    if hasattr(widget, "color"):
+        widget.color = FOREGROUND_COLOUR
 
 
 __all__ = [
@@ -161,9 +65,7 @@ __all__ = [
     "SURFACE_TINT",
     "SURFACE_HIGHLIGHT",
     "SHADOW_COLOUR",
-    "ELEVATION_SHADOWS",
     "lighten_colour",
     "darken_colour",
-    "get_font",
     "apply_default_theme",
 ]

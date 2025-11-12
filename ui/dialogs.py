@@ -1,15 +1,23 @@
-"""Secondary windows and dialogs used by the UI."""
+"""Popup dialogs implemented with Kivy widgets."""
 
 from __future__ import annotations
 
 import platform
 import webbrowser
+from pathlib import Path
+from typing import Callable, Optional
 
-import wx
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 
 from . import styles
 from .assets import get_asset_path
-from .components import RoundedPanel, create_caption
 
 if platform.system() == "Windows":
     try:  # pragma: no cover - runtime integration
@@ -20,145 +28,183 @@ else:  # pragma: no cover - non-Windows platforms
     win_integration = None
 
 
-class SettingsDialog(wx.Dialog):
-    """Dialog that exposes quick preferences and platform options."""
+class SettingsPopup(Popup):
+    """Dialog exposing quick preferences and Windows shell integration."""
 
-    def __init__(self, parent: wx.Window, always_on_top: bool):
-        super().__init__(parent, title="caseMonster preferences")
+    def __init__(
+        self,
+        *,
+        always_on_top: bool,
+        on_toggle_always_on_top: Callable[[bool], None],
+        on_hide_window: Callable[[], None],
+    ) -> None:
+        super().__init__(title="caseMonster preferences", auto_dismiss=False)
+        self.size_hint = (0.55, None)
+        self.height = dp(420)
+        self._on_toggle = on_toggle_always_on_top
+        self._on_hide_window = on_hide_window
+        self._build_content(always_on_top)
 
-        styles.apply_default_theme(self)
-        self.hide_requested = False
-
-        container = RoundedPanel(self, padding=18)
-        container.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
-        body = container.content_sizer
-
-        title = wx.StaticText(container, label="Quick preferences")
-        title.SetFont(styles.get_font("headline"))
-        body.Add(title, 0, wx.BOTTOM, 6)
-
-        description = create_caption(
-            container,
-            "Personalise how the floating window behaves on your desktop.",
+    def _build_content(self, always_on_top: bool) -> None:
+        container = BoxLayout(
+            orientation="vertical",
+            padding=(dp(20), dp(20), dp(20), dp(16)),
+            spacing=dp(12),
         )
-        body.Add(description, 0, wx.BOTTOM, 12)
 
-        self._always_checkbox = wx.CheckBox(
-            container, label="Keep the floating window always on top"
+        intro = Label(
+            text="Personalise how the floating window behaves on your desktop.",
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            color=styles.FOREGROUND_COLOUR,
         )
-        self._always_checkbox.SetValue(always_on_top)
-        self._always_checkbox.SetFont(styles.get_font("base"))
-        self._always_checkbox.SetForegroundColour(styles.FOREGROUND_COLOUR)
-        body.Add(self._always_checkbox, 0, wx.BOTTOM, 12)
+        intro.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+        intro.height = dp(48)
+        container.add_widget(intro)
 
-        hide_button = wx.Button(container, wx.ID_ANY, "Hide the main window now")
-        hide_button.Bind(wx.EVT_BUTTON, self._on_hide_clicked)
-        body.Add(hide_button, 0, wx.BOTTOM, 12)
+        toggle_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(32))
+        checkbox = CheckBox(active=always_on_top, size_hint=(None, None), size=(dp(28), dp(28)))
+        checkbox.bind(active=lambda inst, value: self._on_toggle(bool(value)))
+        toggle_row.add_widget(checkbox)
+        toggle_label = Label(
+            text="Keep the floating window always on top",
+            halign="left",
+            valign="middle",
+            color=styles.FOREGROUND_COLOUR,
+        )
+        toggle_label.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+        toggle_row.add_widget(toggle_label)
+        container.add_widget(toggle_row)
+
+        hide_button = Button(
+            text="Hide the main window now",
+            size_hint_y=None,
+            height=dp(44),
+        )
+        hide_button.bind(on_release=lambda *_: self._request_hide())
+        container.add_widget(hide_button)
 
         if win_integration is not None:
-            divider = wx.StaticLine(container)
-            body.Add(divider, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+            divider = Widget(size_hint_y=None, height=dp(1))
+            container.add_widget(divider)
 
-            windows_heading = wx.StaticText(
-                container, label="Windows Explorer integration"
+            windows_label = Label(
+                text="Windows Explorer integration",
+                color=styles.SUBTLE_TEXT,
+                size_hint_y=None,
+                halign="left",
+                valign="middle",
             )
-            windows_heading.SetFont(styles.get_font("button"))
-            windows_heading.SetForegroundColour(styles.SUBTLE_TEXT)
-            body.Add(windows_heading, 0, wx.BOTTOM, 6)
+            windows_label.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+            windows_label.height = dp(24)
+            container.add_widget(windows_label)
 
-            register_button = wx.Button(
-                container,
-                wx.ID_ANY,
-                "Register Explorer context menu entries",
+            register_button = Button(
+                text="Register Explorer context menu entries",
+                size_hint_y=None,
+                height=dp(44),
             )
-            register_button.Bind(wx.EVT_BUTTON, self._on_register_context_menu)
-            body.Add(register_button, 0, wx.BOTTOM, 6)
+            register_button.bind(on_release=lambda *_: self._with_feedback(win_integration.register_context_menu))
+            container.add_widget(register_button)
 
-            unregister_button = wx.Button(
-                container,
-                wx.ID_ANY,
-                "Remove Explorer context menu entries",
+            unregister_button = Button(
+                text="Remove Explorer context menu entries",
+                size_hint_y=None,
+                height=dp(44),
             )
-            unregister_button.Bind(wx.EVT_BUTTON, self._on_unregister_context_menu)
-            body.Add(unregister_button, 0, wx.BOTTOM, 6)
+            unregister_button.bind(on_release=lambda *_: self._with_feedback(win_integration.unregister_context_menu))
+            container.add_widget(unregister_button)
 
-        footer = create_caption(
-            container,
-            "Need a refresher? The Help menu opens the quick start guide in your browser.",
+        footer = Label(
+            text="Need a refresher? The Help button opens the quick start guide.",
+            halign="left",
+            valign="top",
+            color=styles.SUBTLE_TEXT,
+            size_hint_y=None,
         )
-        footer.Wrap(360)
-        body.Add(footer, 0, wx.TOP, 6)
+        footer.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+        footer.height = dp(44)
+        container.add_widget(footer)
 
-        action_row = wx.StdDialogButtonSizer()
-        ok_button = wx.Button(container, wx.ID_OK, "Save")
-        ok_button.SetDefault()
-        cancel_button = wx.Button(container, wx.ID_CANCEL)
-        action_row.AddButton(ok_button)
-        action_row.AddButton(cancel_button)
-        action_row.Realize()
-        body.Add(action_row, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
+        actions = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(44), spacing=dp(12))
+        actions.add_widget(Widget())
 
-        outer_sizer = wx.BoxSizer(wx.VERTICAL)
-        outer_sizer.Add(container, 1, wx.EXPAND | wx.ALL, 14)
-        self.SetSizerAndFit(outer_sizer)
-        self.SetMinSize(wx.Size(420, self.GetSize().height))
+        save_button = Button(text="Close", size_hint=(None, None), size=(dp(96), dp(40)))
+        save_button.bind(on_release=lambda *_: self.dismiss())
+        actions.add_widget(save_button)
+        container.add_widget(actions)
 
-    def _on_hide_clicked(self, event: wx.CommandEvent):
-        self.hide_requested = True
-        self.EndModal(wx.ID_OK)
-        event.Skip()
+        self.content = container
 
-    def _on_register_context_menu(self, event: wx.CommandEvent):
-        assert win_integration is not None
+    def _request_hide(self) -> None:
+        self._on_hide_window()
+        self.dismiss()
+
+    def _with_feedback(self, action: Callable[[], None]) -> None:
         try:
-            win_integration.register_context_menu()
-            wx.MessageBox(
-                "Context menu entries registered. You may need to restart Explorer.",
-                "caseMonster",
-                style=wx.OK | wx.ICON_INFORMATION,
-            )
-        except Exception as exc:  # pragma: no cover - runtime diagnostics
-            wx.MessageBox(
-                f"Unable to register context menu entries:\n{exc}",
-                "caseMonster",
-                style=wx.OK | wx.ICON_ERROR,
-            )
-        event.Skip()
+            action()
+        except Exception as exc:  # pragma: no cover - best effort diagnostics
+            print(f"caseMonster: {exc}")
 
-    def _on_unregister_context_menu(self, event: wx.CommandEvent):
-        assert win_integration is not None
+
+class HelpPopup(Popup):
+    """Popup displaying the bundled quick start guide."""
+
+    def __init__(self, *, help_path: Path) -> None:
+        super().__init__(title="caseMonster quick start", size_hint=(0.6, 0.7))
+        self._help_path = help_path
+        self._build_content(help_path)
+
+    def _build_content(self, help_path: Path) -> None:
+        text = help_path.read_text(encoding="utf-8") if help_path.exists() else "Help file not found."
+
+        root = BoxLayout(orientation="vertical", padding=(dp(20), dp(20), dp(20), dp(16)), spacing=dp(12))
+
+        scroll = ScrollView()
+        label = Label(
+            text=text,
+            halign="left",
+            valign="top",
+            color=styles.FOREGROUND_COLOUR,
+            size_hint_y=None,
+        )
+        label.bind(texture_size=lambda inst, _: setattr(inst, "height", inst.texture_size[1]))
+        label.bind(size=lambda inst, _: setattr(inst, "text_size", (inst.width, None)))
+        scroll.add_widget(label)
+        root.add_widget(scroll)
+
+        actions = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(44), spacing=dp(12))
+        open_button = Button(text="Open in default viewer", size_hint=(None, None), size=(dp(200), dp(40)))
+        open_button.bind(on_release=lambda *_: self._open_external())
+        actions.add_widget(open_button)
+
+        actions.add_widget(Widget())
+
+        close_button = Button(text="Close", size_hint=(None, None), size=(dp(96), dp(40)))
+        close_button.bind(on_release=lambda *_: self.dismiss())
+        actions.add_widget(close_button)
+
+        root.add_widget(actions)
+        self.content = root
+
+    def _open_external(self) -> None:
+        if not self._help_path.exists():
+            return
         try:
-            win_integration.unregister_context_menu()
-            wx.MessageBox(
-                "Context menu entries removed.",
-                "caseMonster",
-                style=wx.OK | wx.ICON_INFORMATION,
-            )
-        except Exception as exc:  # pragma: no cover - runtime diagnostics
-            wx.MessageBox(
-                f"Unable to remove context menu entries:\n{exc}",
-                "caseMonster",
-                style=wx.OK | wx.ICON_ERROR,
-            )
-        event.Skip()
-
-    @property
-    def always_on_top(self) -> bool:
-        return self._always_checkbox.GetValue()
+            webbrowser.open(self._help_path.as_uri())
+        except Exception as exc:  # pragma: no cover - diagnostic path
+            print(f"caseMonster: unable to open help file: {exc}")
 
 
-def open_help_guide(parent: wx.Window) -> None:
-    """Open the bundled help document in the platform browser."""
+def open_help_guide() -> Optional[HelpPopup]:
+    """Return a popup ready to display the bundled help file."""
 
     help_path = get_asset_path("help.txt").resolve()
     if not help_path.exists():
-        wx.LogError(f"Help file not found: {help_path}")
-        return
-
-    try:
-        webbrowser.open(help_path.as_uri())
-    except Exception as exc:  # pragma: no cover - runtime diagnostics
-        wx.LogError(f"Unable to open help file: {exc}")
+        print(f"caseMonster: Help file not found: {help_path}")
+        return None
+    return HelpPopup(help_path=help_path)
 
 
-__all__ = ["SettingsDialog", "open_help_guide"]
+__all__ = ["SettingsPopup", "HelpPopup", "open_help_guide"]
