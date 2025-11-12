@@ -1,0 +1,153 @@
+#:kivy 2.2.1
+#:import dp kivy.metrics.dp
+#:import styles ui.styles
+
+<CaseMonsterRoot>:
+    orientation: "vertical"
+    padding: dp(12)
+    spacing: dp(12)
+    canvas.before:
+        Color:
+            rgba: styles.BACKGROUND_COLOUR
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    RoundedPanel:
+        padding: (dp(16), dp(20), dp(16), dp(16))
+        spacing: dp(16)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(36)
+            spacing: dp(8)
+
+            Label:
+                text: "caseMonster"
+                color: styles.ACCENT_PRIMARY
+                font_size: "20sp"
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0] + dp(8)
+
+            Widget:
+
+            Button:
+                text: "Help"
+                size_hint: None, None
+                size: dp(72), dp(34)
+                background_normal: ""
+                background_down: ""
+                background_color: styles.SURFACE_HIGHLIGHT
+                color: styles.ACCENT_PRIMARY
+                on_release: app.open_help()
+
+            Button:
+                text: "Settings"
+                size_hint: None, None
+                size: dp(96), dp(34)
+                background_normal: ""
+                background_down: ""
+                background_color: styles.SURFACE_TINT
+                color: styles.ACCENT_NEUTRAL
+                on_release: app.open_settings()
+
+            ToggleButton:
+                id: pin_toggle
+                text: "On top"
+                size_hint: None, None
+                size: dp(96), dp(34)
+                state: "down" if app.always_on_top else "normal"
+                on_state: app.toggle_pin(self.state)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(100)
+            spacing: dp(20)
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: None
+                width: dp(260)
+
+                Label:
+                    text: "Clipboard history"
+                    color: styles.SUBTLE_TEXT
+                    font_size: "14sp"
+                    size_hint_y: None
+                    height: dp(24)
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+                Spinner:
+                    id: history_spinner
+                    size_hint_y: None
+                    height: dp(36)
+                    text: app.current_history_label
+                    values: app.history_labels
+                    background_normal: ""
+                    background_color: styles.CONTAINER_BACKGROUND
+                    color: styles.FOREGROUND_COLOUR
+                    on_text: app.select_history(self.text)
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: None
+                width: dp(120)
+
+                Label:
+                    text: "History limit"
+                    color: styles.SUBTLE_TEXT
+                    font_size: "14sp"
+                    size_hint_y: None
+                    height: dp(24)
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+                TextInput:
+                    id: history_limit_input
+                    size_hint_y: None
+                    height: dp(36)
+                    text: str(int(app.history_limit))
+                    multiline: False
+                    input_filter: "int"
+                    background_normal: ""
+                    background_active: ""
+                    background_color: styles.CONTAINER_BACKGROUND
+                    foreground_color: styles.FOREGROUND_COLOUR
+                    cursor_color: styles.ACCENT_PRIMARY
+                    on_text_validate: app.update_history_limit(self.text)
+                    on_focus: app.update_history_limit(self.text) if not self.focus else None
+
+            Widget:
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.5
+
+                BoxLayout:
+                    spacing: dp(8)
+                    size_hint_y: None
+                    height: dp(56)
+
+                    AccentButton:
+                        text: "Upper"
+                        button_color: styles.ACCENT_PRIMARY
+                        on_release: app.run_action("upper")
+
+                    AccentButton:
+                        text: "Title"
+                        button_color: styles.ACCENT_SECONDARY
+                        on_release: app.run_action("title")
+
+                    AccentButton:
+                        text: "Lower"
+                        button_color: styles.ACCENT_NEUTRAL
+                        on_release: app.run_action("lower")
+
+                    AccentButton:
+                        text: "Sentence"
+                        button_color: styles.ACCENT_TERTIARY
+                        on_release: app.run_action("sentence")

@@ -1,267 +1,97 @@
-"""Reusable UI building blocks for the caseMonster desktop app."""
+"""Reusable Kivy widgets styled for the caseMonster desktop UI."""
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Any
 
-import wx
+from kivy.graphics import Color, RoundedRectangle
+from kivy.metrics import dp
+from kivy.properties import ListProperty, NumericProperty
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
 
 from . import styles
 
 
-class RoundedPanel(wx.Panel):
-    """Panel that draws an elevated rounded rectangle background."""
+class RoundedPanel(BoxLayout):
+    """Panel with rounded corners and a subtle border."""
 
-    def __init__(
-        self,
-        parent: wx.Window,
-        *,
-        radius: int = 16,
-        padding: int = 20,
-        background: wx.Colour | None = None,
-        border_colour: wx.Colour | None = None,
-        elevation: int = 1,
-    ) -> None:
-        super().__init__(parent, style=wx.BORDER_NONE)
+    background_color = ListProperty(styles.CONTAINER_BACKGROUND)
+    border_color = ListProperty(styles.CONTAINER_BORDER)
+    radius = NumericProperty(16)
+    border_width = NumericProperty(1)
 
-        # Scale the visual metrics so that padding and curvature stay consistent
-        # on high DPI displays.
-        self._radius = self.FromDIP(radius)
-        self._padding = self.FromDIP(padding)
-        self._background = background or styles.CONTAINER_BACKGROUND
-        self._border_colour = border_colour or styles.CONTAINER_BORDER
-        self._elevation = max(elevation, 0)
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("orientation", "vertical")
+        kwargs.setdefault(
+            "padding",
+            (dp(20), dp(20), dp(20), dp(20)),
+        )
+        kwargs.setdefault("spacing", dp(12))
+        super().__init__(**kwargs)
+        self.bind(
+            pos=self._update_canvas,
+            size=self._update_canvas,
+            background_color=self._update_canvas,
+            border_color=self._update_canvas,
+        )
+        self._update_canvas()
 
-        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-        self.Bind(wx.EVT_PAINT, self._on_paint)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
-
-        self._content_sizer = wx.BoxSizer(wx.VERTICAL)
-        wrapper = wx.BoxSizer(wx.VERTICAL)
-        wrapper.Add(self._content_sizer, 1, wx.EXPAND | wx.ALL, self._padding)
-        self.SetSizer(wrapper)
-
-    @property
-    def content_sizer(self) -> wx.BoxSizer:
-        return self._content_sizer
-
-    @property
-    def padding(self) -> int:
-        return self._padding
-
-    def content_width(self) -> int:
-        size = self.GetClientSize()
-        return max(size.width - 2 * self._padding, 0)
-
-    def Add(self, window: wx.Window, proportion: int = 0, flag: int = 0, border: int = 0):
-        self._content_sizer.Add(window, proportion, flag, border)
-
-    def AddSpacer(self, size: int):
-        self._content_sizer.AddSpacer(size)
-
-    def _on_paint(self, event: wx.PaintEvent) -> None:
-        size = self.GetClientSize()
-        dc = wx.AutoBufferedPaintDC(self)
-        dc.SetBackground(wx.Brush(self.GetParent().GetBackgroundColour()))
-        dc.Clear()
-
-        gc = wx.GraphicsContext.Create(dc)
-        if gc:
-            if self._elevation:
-                base = styles.SHADOW_COLOUR
-                layers = styles.ELEVATION_SHADOWS.get(self._elevation, ())
-                for offset, alpha in layers:
-                    width = size.width - 2 * offset
-                    height = size.height - 2 * offset
-                    if width <= 0 or height <= 0:
-                        continue
-                    colour = wx.Colour(base.Red(), base.Green(), base.Blue(), alpha)
-                    gc.SetPen(wx.TRANSPARENT_PEN)
-                    gc.SetBrush(wx.Brush(colour))
-                    gc.DrawRoundedRectangle(
-                        offset,
-                        offset,
-                        width,
-                        height,
-                        max(self._radius + self.FromDIP(2) - offset, 4),
-                    )
-
-            path = gc.CreatePath()
-            path.AddRoundedRectangle(0, 0, size.width, size.height, self._radius)
-            gc.SetPen(wx.Pen(self._border_colour, 1))
-            gc.SetBrush(wx.Brush(self._background))
-            gc.DrawPath(path)
-        event.Skip(False)
+    def _update_canvas(self, *args: Any) -> None:
+        radius = [dp(self.radius)] * 4
+        border = dp(self.border_width)
+        self.canvas.before.clear()
+        with self.canvas.before:
+            Color(rgba=self.border_color)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=radius)
+            Color(rgba=self.background_color)
+            RoundedRectangle(
+                pos=(self.x + border, self.y + border),
+                size=(self.width - 2 * border, self.height - 2 * border),
+                radius=radius,
+            )
 
 
-class AccentButton(wx.Button):
-    """Rounded, colour-forward call-to-action button used in the main grid."""
+class AccentButton(Button):
+    """Rounded button styled with the accent palette."""
 
-    def __init__(self, parent: wx.Window, label: str, colour: wx.Colour):
-        style = wx.BORDER_NONE
-        super().__init__(parent, wx.ID_ANY, label, style=style)
+    button_color = ListProperty(styles.ACCENT_PRIMARY)
 
-        self._base_colour = colour
-        self._hover_colour = styles.lighten_colour(colour, 20)
-        self._pressed_colour = styles.darken_colour(colour, 18)
-        self._radius = self.FromDIP(12)
-        self._shadow_layers = styles.ELEVATION_SHADOWS.get(2, ())
-        self._is_focused = False
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("size_hint", (None, None))
+        kwargs.setdefault("size", (dp(176), dp(56)))
+        super().__init__(**kwargs)
+        self.background_normal = ""
+        self.background_down = ""
+        self.color = styles.BUTTON_TEXT_COLOUR
+        self.font_size = "16sp"
+        self._reset_background()
+        self.bind(on_press=self._on_press, on_release=self._on_release)
 
-        min_size = self.FromDIP(wx.Size(176, 56))
-        self.SetMinSize(min_size)
-        self.SetFont(styles.get_font("button"))
-        self.SetForegroundColour(styles.BUTTON_TEXT_COLOUR)
-        self.SetBackgroundColour(self._base_colour)
-        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-        self.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+    def _reset_background(self) -> None:
+        self.background_color = self.button_color
 
-        self.Bind(wx.EVT_ENTER_WINDOW, self._on_hover)
-        self.Bind(wx.EVT_LEAVE_WINDOW, self._on_leave)
-        self.Bind(wx.EVT_LEFT_DOWN, self._on_press)
-        self.Bind(wx.EVT_LEFT_UP, self._on_release)
-        self.Bind(wx.EVT_PAINT, self._on_paint)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
-        self.Bind(wx.EVT_SET_FOCUS, self._on_focus)
-        self.Bind(wx.EVT_KILL_FOCUS, self._on_blur)
+    def _on_press(self, *args: Any) -> None:
+        self.background_color = styles.darken_colour(self.button_color, 0.12)
 
-    def _set_colour(self, colour: wx.Colour) -> None:
-        self.SetBackgroundColour(colour)
-        self.Refresh()
-
-    def _on_hover(self, event: wx.MouseEvent) -> None:
-        self._set_colour(self._hover_colour)
-        event.Skip()
-
-    def _on_leave(self, event: wx.MouseEvent) -> None:
-        self._set_colour(self._base_colour)
-        event.Skip()
-
-    def _on_press(self, event: wx.MouseEvent) -> None:
-        self._set_colour(self._pressed_colour)
-        event.Skip()
-
-    def _on_release(self, event: wx.MouseEvent) -> None:
-        inside = self.GetClientRect().Contains(event.GetPosition())
-        self._set_colour(self._hover_colour if inside else self._base_colour)
-        event.Skip()
-
-    def _on_focus(self, event: wx.FocusEvent) -> None:
-        self._is_focused = True
-        self.Refresh()
-        event.Skip()
-
-    def _on_blur(self, event: wx.FocusEvent) -> None:
-        self._is_focused = False
-        self.Refresh()
-        event.Skip()
-
-    def _on_paint(self, event: wx.PaintEvent):
-        size = self.GetClientSize()
-        dc = wx.AutoBufferedPaintDC(self)
-        dc.SetBackground(wx.Brush(self.GetParent().GetBackgroundColour()))
-        dc.Clear()
-
-        gc = wx.GraphicsContext.Create(dc)
-        if gc:
-            base = styles.SHADOW_COLOUR
-            for offset, alpha in self._shadow_layers:
-                width = size.width - 2 * offset
-                height = size.height - 2 * offset
-                if width <= 0 or height <= 0:
-                    continue
-                colour = wx.Colour(base.Red(), base.Green(), base.Blue(), alpha)
-                gc.SetPen(wx.TRANSPARENT_PEN)
-                gc.SetBrush(wx.Brush(colour))
-                gc.DrawRoundedRectangle(
-                    offset,
-                    offset,
-                    width,
-                    height,
-                    max(self._radius + self.FromDIP(2) - offset, 4),
-                )
-
-            path = gc.CreatePath()
-            path.AddRoundedRectangle(0, 0, size.width, size.height, self._radius)
-            border_colour = styles.lighten_colour(self.GetBackgroundColour(), 12)
-            border_width = 1
-            if self._is_focused:
-                border_colour = styles.ACCENT_PRIMARY
-                border_width = max(self.FromDIP(2), 1)
-            gc.SetPen(wx.Pen(border_colour, border_width))
-            gc.SetBrush(wx.Brush(self.GetBackgroundColour()))
-            gc.DrawPath(path)
-
-            label = self.GetLabel()
-            gc.SetFont(styles.get_font("button"), self.GetForegroundColour())
-            tw, th = gc.GetTextExtent(label)
-            gc.DrawText(label, (size.width - tw) / 2, (size.height - th) / 2)
-        else:  # pragma: no cover - fallback
-            super().DoEraseBackground(dc)
-        event.Skip(False)
+    def _on_release(self, *args: Any) -> None:
+        self._reset_background()
 
 
-class FeatureList(wx.Panel):
-    """Render a vertical bullet list with subtle accent icons."""
+def create_caption(parent: Any, label: str) -> Label:
+    """Return a caption-styled label for compatibility with legacy code."""
 
-    def __init__(self, parent: wx.Window, items: Sequence[str]):
-        super().__init__(parent, style=wx.BORDER_NONE)
-        styles.apply_default_theme(self)
-        self.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        self._labels: list[wx.StaticText] = []
-        self._spacing = self.FromDIP(8)
-        bottom_spacing = self.FromDIP(6)
-
-        for item in items:
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            bullet = wx.StaticText(self, label="•")
-            bullet.SetFont(styles.get_font("headline"))
-            bullet.SetForegroundColour(styles.ACCENT_PRIMARY)
-            row.Add(bullet, 0, wx.RIGHT, self._spacing)
-
-            text = wx.StaticText(self, label=item)
-            text.SetFont(styles.get_font("caption"))
-            text.SetForegroundColour(styles.SUBTLE_TEXT)
-            row.Add(text, 1)
-            self._labels.append(text)
-
-            sizer.Add(row, 0, wx.BOTTOM | wx.EXPAND, bottom_spacing)
-
-        self.SetSizer(sizer)
-        self._update_wrap(self.FromDIP(320))
-        self.Bind(wx.EVT_SIZE, self._on_size)
-
-    def _update_wrap(self, width: int) -> None:
-        available = max(width - self.FromDIP(40), self.FromDIP(160))
-        for label in self._labels:
-            label.Wrap(available)
-        self.Layout()
-
-    def _on_size(self, event: wx.SizeEvent) -> None:
-        self._update_wrap(event.GetSize().width)
-        event.Skip()
+    caption = Label(
+        text=label,
+        color=styles.SUBTLE_TEXT,
+        size_hint_y=None,
+        halign="left",
+        valign="top",
+    )
+    caption.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+    caption.height = caption.texture_size[1] if caption.texture_size else dp(16)
+    return caption
 
 
-def create_caption(parent: wx.Window, label: str) -> wx.StaticText:
-    widget = wx.StaticText(parent, label=label)
-    widget.SetFont(styles.get_font("caption"))
-    widget.SetForegroundColour(styles.SUBTLE_TEXT)
-    return widget
-
-
-def create_section_heading(parent: wx.Window, label: str) -> wx.StaticText:
-    widget = wx.StaticText(parent, label=label)
-    widget.SetFont(styles.get_font("headline"))
-    widget.SetForegroundColour(styles.FOREGROUND_COLOUR)
-    return widget
-
-
-__all__ = [
-    "RoundedPanel",
-    "AccentButton",
-    "FeatureList",
-    "create_caption",
-    "create_section_heading",
-]
+__all__ = ["RoundedPanel", "AccentButton", "create_caption"]
