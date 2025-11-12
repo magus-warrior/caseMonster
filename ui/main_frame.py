@@ -62,31 +62,65 @@ class CaseMonsterFrame(wx.Frame):
         toolbar_panel = wx.Panel(self)
         styles.apply_default_theme(toolbar_panel)
         toolbar_panel.SetBackgroundColour(styles.CONTAINER_BACKGROUND)
-        toolbar_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        toolbar_panel.SetSizer(toolbar_sizer)
+        toolbar_panel.SetDoubleBuffered(True)
+
+        content_sizer = wx.BoxSizer(wx.VERTICAL)
+        content_padding = self.FromDIP(12)
+        toolbar_panel.SetSizer(content_sizer)
 
         outer.Add(toolbar_panel, 1, wx.EXPAND | wx.ALL, padding)
+
+        header_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        content_sizer.Add(header_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, content_padding)
         self.SetSizer(outer)
 
         brand = wx.StaticText(toolbar_panel, label="caseMonster")
         brand.SetFont(styles.get_font("button"))
         brand.SetForegroundColour(styles.ACCENT_PRIMARY)
-        toolbar_sizer.Add(brand, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(8))
+        header_sizer.Add(brand, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        header_sizer.AddStretchSpacer()
+
+        self._pin_toggle = wx.ToggleButton(toolbar_panel, label="On top")
+        self._pin_toggle.SetValue(self.always_on_top)
+        self._pin_toggle.Bind(wx.EVT_TOGGLEBUTTON, self._on_pin_toggled)
+        self._pin_toggle.SetMinSize(self.FromDIP(wx.Size(96, 34)))
+        header_sizer.Add(self._pin_toggle, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        content_sizer.AddSpacer(self.FromDIP(12))
+
+        controls_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        content_sizer.Add(controls_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, content_padding)
+
+        history_column = wx.BoxSizer(wx.VERTICAL)
+        controls_sizer.Add(history_column, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(16))
+
+        history_label = wx.StaticText(toolbar_panel, label="Clipboard history")
+        history_label.SetForegroundColour(styles.SUBTLE_TEXT)
+        history_column.Add(history_label, 0, wx.BOTTOM, self.FromDIP(4))
 
         self.history_choice = wx.Choice(toolbar_panel)
-        self.history_choice.SetMinSize(self.FromDIP(wx.Size(220, 36)))
-        toolbar_sizer.Add(self.history_choice, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(8))
+        self.history_choice.SetMinSize(self.FromDIP(wx.Size(260, 36)))
+        history_column.Add(self.history_choice, 0, wx.EXPAND)
 
-        history_label = wx.StaticText(toolbar_panel, label="History")
-        history_label.SetForegroundColour(styles.SUBTLE_TEXT)
-        toolbar_sizer.Add(history_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(4))
+        history_limit_column = wx.BoxSizer(wx.VERTICAL)
+        controls_sizer.Add(history_limit_column, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(20))
+
+        limit_label = wx.StaticText(toolbar_panel, label="History limit")
+        limit_label.SetForegroundColour(styles.SUBTLE_TEXT)
+        history_limit_column.Add(limit_label, 0, wx.BOTTOM, self.FromDIP(4))
 
         self._history_spin = wx.SpinCtrl(toolbar_panel, min=1, max=50, initial=self._history.limit)
         self._history_spin.SetToolTip("Number of clipboard entries to keep")
         self._history_spin.Bind(wx.EVT_SPINCTRL, self._on_history_limit_changed)
         self._history_spin.Bind(wx.EVT_TEXT, self._on_history_limit_changed)
-        self._history_spin.SetMinSize(self.FromDIP(wx.Size(64, 32)))
-        toolbar_sizer.Add(self._history_spin, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(12))
+        self._history_spin.SetMinSize(self.FromDIP(wx.Size(96, 34)))
+        history_limit_column.Add(self._history_spin, 0, wx.EXPAND)
+
+        controls_sizer.AddStretchSpacer()
+
+        buttons_column = wx.BoxSizer(wx.VERTICAL)
+        controls_sizer.Add(buttons_column, 0, wx.ALIGN_CENTER_VERTICAL)
 
         button_specs = [
             ("Upper", "upper"),
@@ -96,18 +130,16 @@ class CaseMonsterFrame(wx.Frame):
         ]
 
         self._buttons: dict[str, wx.Button] = {}
-        for label, mode in button_specs:
-            button = wx.Button(toolbar_panel, label=label)
-            button.SetMinSize(self.FromDIP(wx.Size(90, 36)))
-            button.Bind(wx.EVT_BUTTON, self._make_action_handler(mode))
-            toolbar_sizer.Add(button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, self.FromDIP(4))
-            self._buttons[mode] = button
+        buttons_row = wx.BoxSizer(wx.HORIZONTAL)
+        buttons_column.Add(buttons_row, 0, wx.ALIGN_RIGHT)
 
-        self._pin_toggle = wx.ToggleButton(toolbar_panel, label="On top")
-        self._pin_toggle.SetValue(self.always_on_top)
-        self._pin_toggle.Bind(wx.EVT_TOGGLEBUTTON, self._on_pin_toggled)
-        self._pin_toggle.SetMinSize(self.FromDIP(wx.Size(80, 36)))
-        toolbar_sizer.Add(self._pin_toggle, 0, wx.ALIGN_CENTER_VERTICAL)
+        for index, (label, mode) in enumerate(button_specs):
+            button = wx.Button(toolbar_panel, label=label)
+            button.SetMinSize(self.FromDIP(wx.Size(110, 40)))
+            button.Bind(wx.EVT_BUTTON, self._make_action_handler(mode))
+            right_padding = self.FromDIP(8) if index < len(button_specs) - 1 else 0
+            buttons_row.Add(button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, right_padding)
+            self._buttons[mode] = button
 
         self._taskbar_icon: CaseMonsterTaskBarIcon | None = CaseMonsterTaskBarIcon(self)
 
