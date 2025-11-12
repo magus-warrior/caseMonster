@@ -14,7 +14,12 @@ from pathlib import Path
 from typing import Callable
 
 import pyautogui as pya
-import pyperclip
+
+from clipboard import (
+    ClipboardUnavailable,
+    copy as clipboard_copy,
+    paste as clipboard_paste,
+)
 
 from platform_utils import primary_modifier_key, supports_alt_tab
 
@@ -123,7 +128,7 @@ def _maybe_switch_window():
 
 
 def _copy_selection():
-    pyperclip.copy("")
+    clipboard_copy("")
     pya.hotkey(MODIFIER_KEY, "c")
     time.sleep(0.01)
 
@@ -142,9 +147,9 @@ def transform_clipboard(
     _maybe_switch_window()
     if source_text is None:
         _copy_selection()
-        source_text = pyperclip.paste()
+        source_text = clipboard_paste()
     transformed = transform(source_text)
-    pyperclip.copy(transformed)
+    clipboard_copy(transformed)
     if paste:
         _paste_selection()
     time.sleep(0.01)
@@ -209,7 +214,10 @@ def _cli(argv: list[str]) -> int:
         _convert_file(args.target, args.convert, args.in_place)
         return 0
 
-    pyperclip.copy(convert_text(pyperclip.paste(), args.convert))
+    try:
+        clipboard_copy(convert_text(clipboard_paste(), args.convert))
+    except ClipboardUnavailable as exc:
+        raise SystemExit(str(exc)) from exc
     return 0
 
 

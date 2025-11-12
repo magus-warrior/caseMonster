@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-import pyperclip
+from clipboard import ClipboardUnavailable, paste as clipboard_paste
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.clock import ClockEvent
@@ -174,7 +174,9 @@ class CaseMonsterApp(App):
 
     def _read_clipboard(self) -> Optional[str]:
         try:
-            value = pyperclip.paste()
+            value = clipboard_paste()
+        except ClipboardUnavailable:
+            return None
         except AttributeError:
             return None
         except Exception:  # pragma: no cover - clipboard can fail unexpectedly
