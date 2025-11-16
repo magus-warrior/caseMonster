@@ -12,6 +12,7 @@ from kivy.clock import ClockEvent
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.logger import Logger
+from kivy.metrics import dp
 from kivy.properties import (
     BooleanProperty,
     ListProperty,
@@ -19,6 +20,8 @@ from kivy.properties import (
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 
 from ui import actions
 from ui.assets import icon_path
@@ -30,7 +33,7 @@ from ui.main_frame import (
     describe_history,
     ensure_history_limit,
 )
-from ui.styles import BACKGROUND_COLOUR
+from ui.styles import BACKGROUND_COLOUR, FOREGROUND_COLOUR
 from ui.tray import CaseMonsterTray
 
 # Import styled widgets so that the KV language recognises them
@@ -299,7 +302,26 @@ class CaseMonsterApp(App):
         source_text = None
         if 0 < selection <= len(self._history_entries):
             source_text = self._history_entries[selection - 1]
-        result = actions.run(mode, source_text=source_text)
+        try:
+            result = actions.run(mode, source_text=source_text)
+        except ClipboardUnavailable as exc:
+            Logger.error(
+                "CaseMonster: automation dependency missing for action '%s': %s",
+                mode,
+                exc,
+            )
+            self._show_automation_warning(str(exc))
+            return
+        except Exception:
+            Logger.exception(
+                "CaseMonster: unexpected automation failure while running '%s'", mode
+            )
+            self._show_automation_warning(
+                "Clipboard automation requires dependencies such as pyautogui "
+                "and clipboard access permissions. Please install or enable them "
+                "and try again."
+            )
+            return
         if not result:
             Logger.info("CaseMonster: action '%s' produced no result", mode)
             return
@@ -307,6 +329,35 @@ class CaseMonsterApp(App):
         self.history.record(original)
         self.history.record(transformed)
         self._refresh_history(selected_text=source_text)
+
+    def _show_automation_warning(self, message: str) -> None:
+        details = message.strip() if message else "Clipboard automation is unavailable."
+        Logger.warning("CaseMonster: automation unavailable - %s", details)
+        popup = Popup(
+            title="Automation unavailable",
+            auto_dismiss=True,
+            size_hint=(0.5, None),
+            height=dp(220),
+        )
+        container = BoxLayout(
+            orientation="vertical",
+            padding=(dp(16), dp(16), dp(16), dp(16)),
+        )
+        label = Label(
+            text=(
+                f"{details}\n\n"
+                "caseMonster needs automation dependencies such as pyautogui "
+                "and clipboard access. Fix the environment and try again."
+            ),
+            halign="left",
+            valign="middle",
+            color=FOREGROUND_COLOUR,
+        )
+        label.bind(width=lambda inst, _value: setattr(inst, "text_size", (inst.width, None)))
+        container.add_widget(label)
+        popup.content = container
+        popup.open()
+        Clock.schedule_once(lambda *_: popup.dismiss(), 6)
 
     def open_settings(self) -> None:
         Logger.info("CaseMonster: opening settings popup")
