@@ -197,14 +197,46 @@ class HelpPopup(Popup):
             print(f"caseMonster: unable to open help file: {exc}")
 
 
-def open_help_guide() -> Optional[HelpPopup]:
+class InfoPopup(Popup):
+    """Simple modal popup used for inline notifications."""
+
+    def __init__(self, *, title: str, message: str) -> None:
+        super().__init__(title=title, size_hint=(0.5, None), height=dp(240))
+        self.auto_dismiss = False
+        self._build_content(message)
+
+    def _build_content(self, message: str) -> None:
+        root = BoxLayout(orientation="vertical", padding=(dp(20), dp(20), dp(20), dp(16)), spacing=dp(12))
+        label = Label(
+            text=message,
+            halign="left",
+            valign="top",
+            color=styles.FOREGROUND_COLOUR,
+            size_hint_y=1,
+        )
+        label.bind(size=lambda inst, _: setattr(inst, "text_size", inst.size))
+        root.add_widget(label)
+
+        actions = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(44))
+        actions.add_widget(Widget())
+        close_button = Button(text="Close", size_hint=(None, None), size=(dp(96), dp(40)))
+        close_button.bind(on_release=lambda *_: self.dismiss())
+        actions.add_widget(close_button)
+        root.add_widget(actions)
+        self.content = root
+
+
+def open_help_guide() -> Optional[Popup]:
     """Return a popup ready to display the bundled help file."""
 
     help_path = get_asset_path("help.txt").resolve()
     if not help_path.exists():
-        print(f"caseMonster: Help file not found: {help_path}")
-        return None
+        message = (
+            "The bundled help.txt file could not be found.\n\n"
+            "Restore it from the original caseMonster download and press Help again."
+        )
+        return InfoPopup(title="Help file missing", message=message)
     return HelpPopup(help_path=help_path)
 
 
-__all__ = ["SettingsPopup", "HelpPopup", "open_help_guide"]
+__all__ = ["SettingsPopup", "HelpPopup", "InfoPopup", "open_help_guide"]

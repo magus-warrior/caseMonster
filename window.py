@@ -25,7 +25,7 @@ from kivy.uix.popup import Popup
 
 from ui import actions
 from ui.assets import icon_path
-from ui.dialogs import SettingsPopup, open_help_guide
+from ui.dialogs import InfoPopup, SettingsPopup, open_help_guide
 from ui.history import ClipboardHistory
 from ui.main_frame import (
     CLIPBOARD_POLL_SECONDS,
@@ -158,13 +158,23 @@ class CaseMonsterApp(App):
         if config.has_option(section, "always_on_top"):
             self.always_on_top = config.getboolean(section, "always_on_top")
         if config.has_option(section, "history_limit"):
-            limit = ensure_history_limit(config.getint(section, "history_limit"))
-            self.history_limit = limit
-            self.history.update_limit(limit)
-            Logger.info(
-                "CaseMonster: history limit set to %s (config)",
-                limit,
-            )
+            try:
+                limit = ensure_history_limit(config.getint(section, "history_limit"))
+            except (TypeError, ValueError):
+                Logger.warning(
+                    "CaseMonster: invalid history limit in config; restoring default"
+                )
+                limit = DEFAULT_HISTORY_LIMIT
+                self.history_limit = limit
+                self.history.update_limit(limit)
+                self._write_preferences()
+            else:
+                self.history_limit = limit
+                self.history.update_limit(limit)
+                Logger.info(
+                    "CaseMonster: history limit set to %s (config)",
+                    limit,
+                )
         else:
             self.history.update_limit(DEFAULT_HISTORY_LIMIT)
             Logger.info(
@@ -305,21 +315,31 @@ class CaseMonsterApp(App):
         try:
             result = actions.run(mode, source_text=source_text)
         except ClipboardUnavailable as exc:
-            Logger.error(
-                "CaseMonster: automation dependency missing for action '%s': %s",
-                mode,
-                exc,
+            Logger.warning("CaseMonster: automation unavailable: %s", exc)
+            self._show_info(
+                title="Clipboard automation unavailable",
+                message=(
+                    "caseMonster needs access to automation dependencies such as "
+                    "pyautogui (and the system clipboard) to run actions.\n\n"
+                    f"Details: {exc}"
+                ),
             )
-            self._show_automation_warning(str(exc))
+            return
+        except KeyboardInterrupt:
+            Logger.warning("CaseMonster: action '%s' interrupted", mode)
+            self._show_info(
+                title="Action interrupted",
+                message="The clipboard automation was interrupted before it finished.",
+            )
             return
         except Exception:
-            Logger.exception(
-                "CaseMonster: unexpected automation failure while running '%s'", mode
-            )
-            self._show_automation_warning(
-                "Clipboard automation requires dependencies such as pyautogui "
-                "and clipboard access permissions. Please install or enable them "
-                "and try again."
+            Logger.exception("CaseMonster: action '%s' failed", mode)
+            self._show_info(
+                title="Action failed",
+                message=(
+                    "Something went wrong while running that action. "
+                    "Check the log for details."
+                ),
             )
             return
         if not result:
@@ -330,34 +350,9 @@ class CaseMonsterApp(App):
         self.history.record(transformed)
         self._refresh_history(selected_text=source_text)
 
-    def _show_automation_warning(self, message: str) -> None:
-        details = message.strip() if message else "Clipboard automation is unavailable."
-        Logger.warning("CaseMonster: automation unavailable - %s", details)
-        popup = Popup(
-            title="Automation unavailable",
-            auto_dismiss=True,
-            size_hint=(0.5, None),
-            height=dp(220),
-        )
-        container = BoxLayout(
-            orientation="vertical",
-            padding=(dp(16), dp(16), dp(16), dp(16)),
-        )
-        label = Label(
-            text=(
-                f"{details}\n\n"
-                "caseMonster needs automation dependencies such as pyautogui "
-                "and clipboard access. Fix the environment and try again."
-            ),
-            halign="left",
-            valign="middle",
-            color=FOREGROUND_COLOUR,
-        )
-        label.bind(width=lambda inst, _value: setattr(inst, "text_size", (inst.width, None)))
-        container.add_widget(label)
-        popup.content = container
+    def _show_info(self, *, title: str, message: str) -> None:
+        popup = InfoPopup(title=title, message=message)
         popup.open()
-        Clock.schedule_once(lambda *_: popup.dismiss(), 6)
 
     def open_settings(self) -> None:
         Logger.info("CaseMonster: opening settings popup")
