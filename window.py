@@ -354,3 +354,7 @@ def launch_app() -> int:
 
 
 __all__ = ["CaseMonsterApp", "CaseMonsterRoot", "launch_app"]
+
+
+if __name__ == "__main__":  # pragma: no cover - manual launch helper
+    raise SystemExit(launch_app())

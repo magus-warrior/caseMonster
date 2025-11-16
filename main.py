@@ -13,7 +13,13 @@ import time
 from pathlib import Path
 from typing import Callable
 
-import pyautogui as pya
+try:
+    import pyautogui as _pyautogui
+except Exception as exc:  # pragma: no cover - import guard for optional dependency
+    _pyautogui = None
+    _PYAUTOGUI_IMPORT_ERROR = exc
+else:
+    _PYAUTOGUI_IMPORT_ERROR = None
 
 from clipboard import (
     ClipboardUnavailable,
@@ -121,20 +127,32 @@ TRANSFORMS: dict[str, Transform] = {
 MODIFIER_KEY = primary_modifier_key()
 
 
+def _require_automation_backend():
+    if _pyautogui is None:
+        raise ClipboardUnavailable(
+            "pyautogui is required for clipboard automation. "
+            "Install it with 'pip install pyautogui' to enable the GUI actions."
+        ) from _PYAUTOGUI_IMPORT_ERROR
+    return _pyautogui
+
+
 def _maybe_switch_window():
     if supports_alt_tab():
-        pya.hotkey("alt", "tab")
+        backend = _require_automation_backend()
+        backend.hotkey("alt", "tab")
         time.sleep(0.01)
 
 
 def _copy_selection():
+    backend = _require_automation_backend()
     clipboard_copy("")
-    pya.hotkey(MODIFIER_KEY, "c")
+    backend.hotkey(MODIFIER_KEY, "c")
     time.sleep(0.01)
 
 
 def _paste_selection():
-    pya.hotkey(MODIFIER_KEY, "v")
+    backend = _require_automation_backend()
+    backend.hotkey(MODIFIER_KEY, "v")
     time.sleep(0.01)
 
 
