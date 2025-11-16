@@ -12,6 +12,7 @@ from kivy.clock import ClockEvent
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.logger import Logger
+from kivy.metrics import dp
 from kivy.properties import (
     BooleanProperty,
     ListProperty,
@@ -19,6 +20,8 @@ from kivy.properties import (
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 
 from ui import actions
 from ui.assets import icon_path
@@ -30,7 +33,7 @@ from ui.main_frame import (
     describe_history,
     ensure_history_limit,
 )
-from ui.styles import BACKGROUND_COLOUR
+from ui.styles import BACKGROUND_COLOUR, FOREGROUND_COLOUR
 from ui.tray import CaseMonsterTray
 
 # Import styled widgets so that the KV language recognises them
