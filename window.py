@@ -88,8 +88,17 @@ class CaseMonsterApp(App):
             Logger.warning("CaseMonster: no icon asset could be located")
 
         Window.clearcolor = BACKGROUND_COLOUR
-        Window.minimum_width = 620
-        Window.minimum_height = 180
+        min_width, min_height = 620, 180
+        Window.minimum_width = min_width
+        Window.minimum_height = min_height
+        # Ensure the initial window footprint matches the compact defaults instead
+        # of Kivy's 800x600 fallback, while guarding against future regressions
+        # that might shrink the window below the enforced minimum dimensions.
+        requested_width, requested_height = min_width, min_height
+        Window.size = (
+            max(requested_width, min_width),
+            max(requested_height, min_height),
+        )
 
         self._load_preferences()
         self._refresh_history()
