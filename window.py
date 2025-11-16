@@ -22,7 +22,7 @@ from kivy.uix.boxlayout import BoxLayout
 
 from ui import actions
 from ui.assets import icon_path
-from ui.dialogs import SettingsPopup, open_help_guide
+from ui.dialogs import InfoPopup, SettingsPopup, open_help_guide
 from ui.history import ClipboardHistory
 from ui.main_frame import (
     CLIPBOARD_POLL_SECONDS,
@@ -155,13 +155,23 @@ class CaseMonsterApp(App):
         if config.has_option(section, "always_on_top"):
             self.always_on_top = config.getboolean(section, "always_on_top")
         if config.has_option(section, "history_limit"):
-            limit = ensure_history_limit(config.getint(section, "history_limit"))
-            self.history_limit = limit
-            self.history.update_limit(limit)
-            Logger.info(
-                "CaseMonster: history limit set to %s (config)",
-                limit,
-            )
+            try:
+                limit = ensure_history_limit(config.getint(section, "history_limit"))
+            except (TypeError, ValueError):
+                Logger.warning(
+                    "CaseMonster: invalid history limit in config; restoring default"
+                )
+                limit = DEFAULT_HISTORY_LIMIT
+                self.history_limit = limit
+                self.history.update_limit(limit)
+                self._write_preferences()
+            else:
+                self.history_limit = limit
+                self.history.update_limit(limit)
+                Logger.info(
+                    "CaseMonster: history limit set to %s (config)",
+                    limit,
+                )
         else:
             self.history.update_limit(DEFAULT_HISTORY_LIMIT)
             Logger.info(
@@ -299,7 +309,36 @@ class CaseMonsterApp(App):
         source_text = None
         if 0 < selection <= len(self._history_entries):
             source_text = self._history_entries[selection - 1]
-        result = actions.run(mode, source_text=source_text)
+        try:
+            result = actions.run(mode, source_text=source_text)
+        except ClipboardUnavailable as exc:
+            Logger.warning("CaseMonster: automation unavailable: %s", exc)
+            self._show_info(
+                title="Clipboard automation unavailable",
+                message=(
+                    "caseMonster needs access to automation dependencies such as "
+                    "pyautogui (and the system clipboard) to run actions.\n\n"
+                    f"Details: {exc}"
+                ),
+            )
+            return
+        except KeyboardInterrupt:
+            Logger.warning("CaseMonster: action '%s' interrupted", mode)
+            self._show_info(
+                title="Action interrupted",
+                message="The clipboard automation was interrupted before it finished.",
+            )
+            return
+        except Exception:
+            Logger.exception("CaseMonster: action '%s' failed", mode)
+            self._show_info(
+                title="Action failed",
+                message=(
+                    "Something went wrong while running that action. "
+                    "Check the log for details."
+                ),
+            )
+            return
         if not result:
             Logger.info("CaseMonster: action '%s' produced no result", mode)
             return
@@ -307,6 +346,10 @@ class CaseMonsterApp(App):
         self.history.record(original)
         self.history.record(transformed)
         self._refresh_history(selected_text=source_text)
+
+    def _show_info(self, *, title: str, message: str) -> None:
+        popup = InfoPopup(title=title, message=message)
+        popup.open()
 
     def open_settings(self) -> None:
         Logger.info("CaseMonster: opening settings popup")
